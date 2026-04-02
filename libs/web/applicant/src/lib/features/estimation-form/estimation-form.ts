@@ -1,7 +1,31 @@
-import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostListener,
+  OnDestroy,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AssessmentApiService } from './assessment-api.service';
+import { DocumentApiService, type UploadGroup } from './document-api.service';
+import {
+  CONDITION_OPTIONS,
+  ELEVATOR_TYPE_OPTIONS,
+  INITIAL_ESTIMATION_FORM_VALUE,
+  OBJECT_TYPE_OPTIONS,
+  WALL_MATERIAL_OPTIONS,
+  type AssessmentDocumentModel,
+  type AssessmentDraftModel,
+  type DistrictLookupOption,
+  type EstimationFormDraftData,
+  type EstimationFormValue,
+  type LookupOption,
+} from './estimation-form.models';
+import { EstimationFormSessionService } from './estimation-form-session.service';
 
-type UploadGroup = 'documents' | 'photos' | 'additional';
 type RequiredUploadGroup = Exclude<UploadGroup, 'additional'>;
 type FormControlElement = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 type FileCategory = 'image' | 'pdf' | 'word' | 'spreadsheet' | 'other';
@@ -12,17 +36,38 @@ interface ImagePreviewState {
   objectUrl: string;
 }
 
+const ASSESSMENT_ID_QUERY_PARAM = 'assessmentId';
+
 @Component({
   selector: 'lib-estimation-form',
   standalone: true,
-  imports: [],
+  imports: [FormsModule],
   templateUrl: './estimation-form.html',
   styleUrl: './estimation-form.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EstimationForm implements OnDestroy {
-  private readonly router = inject(Router);
-  private readonly objectUrls = new Map<string, string>();
+  readonly cities = signal<LookupOption[]>([]);
+  readonly districts = signal<DistrictLookupOption[]>([]);
+  readonly loading = signal(true);
+  readonly saving = signal(false);
+  readonly loadError = signal<string | null>(null);
+  readonly saveError = signal<string | null>(null);
+  readonly documentsError = signal<string | null>(null);
+  readonly assessmentId = signal<string | null>(null);
+  readonly storedDocuments = signal<AssessmentDocumentModel[]>([]);
+  readonly uploadedDocumentItems = computed(() =>
+    this.storedDocuments().filter((document) => document.kind === 'document'),
+  );
+  readonly uploadedPhotoItems = computed(() =>
+    this.storedDocuments().filter((document) => document.kind === 'photo'),
+  );
+  readonly isBusy = computed(() => this.loading() || this.saving());
+  readonly objectTypeOptions = OBJECT_TYPE_OPTIONS;
+  readonly conditionOptions = CONDITION_OPTIONS;
+  readonly wallMaterialOptions = WALL_MATERIAL_OPTIONS;
+  readonly elevatorTypeOptions = ELEVATOR_TYPE_OPTIONS;
+
   showValidationErrors = false;
   validationErrorMessage = '';
   documentFiles: ReadonlyArray<File> = [];
@@ -30,11 +75,25 @@ export class EstimationForm implements OnDestroy {
   additionalFiles: ReadonlyArray<File> = [];
   imagePreviewState: ImagePreviewState | null = null;
   isConsentModalOpen = false;
+  form: EstimationFormValue = { ...INITIAL_ESTIMATION_FORM_VALUE };
 
-  onSubmit(event: Event, form: HTMLFormElement): void {
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly assessmentApi = inject(AssessmentApiService);
+  private readonly documentApi = inject(DocumentApiService);
+  private readonly sessionService = inject(EstimationFormSessionService);
+  private readonly objectUrls = new Map<string, string>();
+  private readonly allDistricts = signal<DistrictLookupOption[]>([]);
+
+  constructor() {
+    void this.initialize();
+  }
+
+  async onSubmit(event: Event, form: HTMLFormElement): Promise<void> {
     event.preventDefault();
     this.showValidationErrors = true;
     this.validationErrorMessage = '';
+    this.saveError.set(null);
 
     const firstInvalidControl = form.querySelector<FormControlElement>(
       'input:invalid, select:invalid, textarea:invalid',
@@ -54,7 +113,38 @@ export class EstimationForm implements OnDestroy {
       return;
     }
 
-    void this.router.navigate(['/applicant/assessment/status']);
+    this.saving.set(true);
+
+    try {
+      const assessment = await this.saveDraft();
+      const uploadFailures = await this.uploadPendingFiles(assessment.id);
+
+      await this.loadStoredDocuments(assessment.id);
+
+      if (uploadFailures.length) {
+        throw new Error(
+          `Не удалось загрузить часть файлов: ${uploadFailures.slice(0, 3).join(', ')}`,
+        );
+      }
+
+      await this.router.navigate(['/applicant/assessment/status'], {
+        queryParams: {
+          [ASSESSMENT_ID_QUERY_PARAM]: assessment.id,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to save estimation form', error);
+      this.saveError.set(
+        extractErrorMessage(error, 'Не удалось сохранить параметры оценки. Попробуйте ещё раз.'),
+      );
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  onCityChange(cityId: string): void {
+    this.form.districtId = '';
+    void this.loadDistrictsForCity(cityId);
   }
 
   onFilesSelected(event: Event, group: UploadGroup): void {
@@ -84,7 +174,19 @@ export class EstimationForm implements OnDestroy {
   }
 
   hasFiles(group: UploadGroup): boolean {
-    return this.getFiles(group).length > 0;
+    if (this.getFiles(group).length > 0) {
+      return true;
+    }
+
+    if (group === 'additional') {
+      return false;
+    }
+
+    return this.getStoredDocuments(group).length > 0;
+  }
+
+  hasStoredDocuments(group: RequiredUploadGroup): boolean {
+    return this.getStoredDocuments(group).length > 0;
   }
 
   isRequiredUploadMissing(group: RequiredUploadGroup): boolean {
@@ -114,6 +216,16 @@ export class EstimationForm implements OnDestroy {
     }
 
     return `${count} файлов`;
+  }
+
+  formatStoredDocumentMeta(document: AssessmentDocumentModel): string {
+    const parts = [document.kind === 'photo' ? 'Фото' : 'Документ', `v${document.version}`];
+
+    if (document.uploadedAt) {
+      parts.push(new Date(document.uploadedAt).toLocaleString('ru-RU'));
+    }
+
+    return parts.join(' · ');
   }
 
   isImageFile(file: File): boolean {
@@ -236,6 +348,243 @@ export class EstimationForm implements OnDestroy {
     this.objectUrls.clear();
   }
 
+  private async initialize(): Promise<void> {
+    this.loading.set(true);
+    this.loadError.set(null);
+    this.documentsError.set(null);
+
+    try {
+      const [cities, districts] = await Promise.all([
+        this.assessmentApi.listCities(),
+        this.assessmentApi.listDistricts(),
+      ]);
+
+      this.cities.set(cities);
+      this.allDistricts.set(districts);
+      this.districts.set(districts);
+
+      const routeAssessmentId =
+        this.route.snapshot.queryParamMap.get(ASSESSMENT_ID_QUERY_PARAM)?.trim() ?? '';
+
+      if (routeAssessmentId) {
+        await this.loadDraftById(routeAssessmentId);
+        return;
+      }
+
+      const userId = await this.requireUserId();
+      const latestDraft = await this.assessmentApi.findLatestDraft(userId);
+
+      if (!latestDraft) {
+        return;
+      }
+
+      this.applyDraft(latestDraft);
+      await this.syncAssessmentId(latestDraft.id);
+      await this.loadDistrictsForCity(latestDraft.form.cityId, latestDraft.form.districtId);
+      await this.loadStoredDocuments(latestDraft.id);
+    } catch (error) {
+      console.error('Failed to initialize estimation form', error);
+      this.loadError.set(
+        extractErrorMessage(error, 'Не удалось загрузить форму оценки. Проверьте backend.'),
+      );
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  private async loadDraftById(assessmentId: string): Promise<void> {
+    const draft = await this.assessmentApi.getAssessment(assessmentId);
+    this.applyDraft(draft);
+    await this.loadDistrictsForCity(draft.form.cityId, draft.form.districtId);
+    await this.loadStoredDocuments(draft.id);
+  }
+
+  private applyDraft(draft: AssessmentDraftModel): void {
+    this.assessmentId.set(draft.id);
+    this.form = {
+      ...INITIAL_ESTIMATION_FORM_VALUE,
+      ...draft.form,
+    };
+  }
+
+  private async saveDraft(): Promise<AssessmentDraftModel> {
+    const formData = this.toDraftData();
+    const currentAssessmentId = this.assessmentId();
+
+    const savedAssessment = currentAssessmentId
+      ? await this.assessmentApi.updateDraft(currentAssessmentId, formData)
+      : await this.assessmentApi.createDraft(await this.requireUserId(), formData);
+
+    this.assessmentId.set(savedAssessment.id);
+    await this.syncAssessmentId(savedAssessment.id);
+
+    return savedAssessment;
+  }
+
+  private async loadDistrictsForCity(cityId: string, preferredDistrictId?: string): Promise<void> {
+    if (!cityId.trim()) {
+      this.districts.set(this.allDistricts());
+      this.form.districtId = '';
+      return;
+    }
+
+    const districts = await this.assessmentApi.listDistricts(cityId);
+    this.districts.set(districts);
+
+    const nextDistrictId = preferredDistrictId ?? this.form.districtId;
+    if (nextDistrictId && districts.some((district) => district.id === nextDistrictId)) {
+      this.form.districtId = nextDistrictId;
+      return;
+    }
+
+    this.form.districtId = '';
+  }
+
+  private async loadStoredDocuments(assessmentId: string): Promise<void> {
+    this.documentsError.set(null);
+
+    try {
+      const documents = await this.documentApi.listDocumentsByAssessment(assessmentId);
+      this.storedDocuments.set(documents);
+    } catch (error) {
+      console.error('Failed to load documents for assessment', error);
+      this.documentsError.set(
+        extractErrorMessage(error, 'Не удалось загрузить список документов заявки.'),
+      );
+    }
+  }
+
+  private async uploadPendingFiles(assessmentId: string): Promise<string[]> {
+    const failures = [
+      ...(await this.uploadGroupFiles('documents', assessmentId)),
+      ...(await this.uploadGroupFiles('photos', assessmentId)),
+      ...(await this.uploadGroupFiles('additional', assessmentId)),
+    ];
+
+    this.syncAllUploadInputs();
+
+    return failures;
+  }
+
+  private async uploadGroupFiles(group: UploadGroup, assessmentId: string): Promise<string[]> {
+    const files = [...this.getFiles(group)];
+    if (!files.length) {
+      return [];
+    }
+
+    const results = await Promise.allSettled(
+      files.map((file) =>
+        this.documentApi.uploadDocument({
+          assessmentId,
+          file,
+          group,
+        }),
+      ),
+    );
+
+    const uploadedFiles: File[] = [];
+    const failedFiles: string[] = [];
+
+    results.forEach((result, index) => {
+      const file = files[index];
+
+      if (result.status === 'fulfilled') {
+        uploadedFiles.push(file);
+        return;
+      }
+
+      failedFiles.push(file.name);
+    });
+
+    if (uploadedFiles.length) {
+      this.removeUploadedPendingFiles(group, uploadedFiles);
+    }
+
+    return failedFiles;
+  }
+
+  private removeUploadedPendingFiles(group: UploadGroup, uploadedFiles: ReadonlyArray<File>): void {
+    const uploadedFileKeys = new Set(uploadedFiles.map((file) => this.buildFileKey(file)));
+    const remainingFiles = this.getFiles(group).filter((file) => {
+      const wasUploaded = uploadedFileKeys.has(this.buildFileKey(file));
+      if (wasUploaded) {
+        this.closeImagePreviewIfOpen(file);
+        this.releaseObjectUrl(file);
+      }
+
+      return !wasUploaded;
+    });
+
+    this.setFiles(group, remainingFiles);
+  }
+
+  private syncAllUploadInputs(): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const documentInput = document.getElementById('documentFiles') as HTMLInputElement | null;
+    const photoInput = document.getElementById('photoFiles') as HTMLInputElement | null;
+    const additionalInput = document.getElementById('additionalFiles') as HTMLInputElement | null;
+
+    if (documentInput) {
+      this.syncFileInput(documentInput, this.documentFiles);
+    }
+
+    if (photoInput) {
+      this.syncFileInput(photoInput, this.photoFiles);
+    }
+
+    if (additionalInput) {
+      this.syncFileInput(additionalInput, this.additionalFiles);
+    }
+  }
+
+  private async syncAssessmentId(assessmentId: string): Promise<void> {
+    const currentRouteValue =
+      this.route.snapshot.queryParamMap.get(ASSESSMENT_ID_QUERY_PARAM)?.trim() ?? '';
+
+    if (currentRouteValue === assessmentId) {
+      return;
+    }
+
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      replaceUrl: true,
+      queryParamsHandling: 'merge',
+      queryParams: {
+        [ASSESSMENT_ID_QUERY_PARAM]: assessmentId,
+      },
+    });
+  }
+
+  private async requireUserId(): Promise<string> {
+    try {
+      return await this.sessionService.ensureUserId();
+    } catch (error) {
+      await this.router.navigateByUrl('/auth');
+      throw error;
+    }
+  }
+
+  private toDraftData(): EstimationFormDraftData {
+    return {
+      cityId: this.form.cityId,
+      districtId: this.form.districtId,
+      address: this.form.address,
+      area: this.form.area,
+      objectType: this.form.objectType,
+      rooms: this.form.rooms,
+      floorsTotal: this.form.floorsTotal,
+      floor: this.form.floor,
+      condition: this.form.condition,
+      yearBuilt: this.form.yearBuilt,
+      wallMaterial: this.form.wallMaterial,
+      elevatorType: this.form.elevatorType,
+      description: this.form.description,
+    };
+  }
+
   private buildValidationErrorMessage(form: HTMLFormElement, control: FormControlElement): string {
     const labelText = this.getControlLabel(form, control);
     const browserMessage = control.validationMessage;
@@ -257,6 +606,10 @@ export class EstimationForm implements OnDestroy {
     }
 
     return this.additionalFiles;
+  }
+
+  private getStoredDocuments(group: RequiredUploadGroup): ReadonlyArray<AssessmentDocumentModel> {
+    return group === 'documents' ? this.uploadedDocumentItems() : this.uploadedPhotoItems();
   }
 
   private setFiles(group: UploadGroup, files: ReadonlyArray<File>): void {
@@ -445,4 +798,28 @@ export class EstimationForm implements OnDestroy {
   private getFileExtension(fileName: string): string {
     return fileName.split('.').pop()?.toLowerCase() ?? '';
   }
+}
+
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  if (typeof error === 'object' && error) {
+    const maybeError = error as { rawMessage?: unknown; message?: unknown };
+
+    if (typeof maybeError.rawMessage === 'string' && maybeError.rawMessage.trim()) {
+      return maybeError.rawMessage.trim();
+    }
+
+    if (typeof maybeError.message === 'string' && maybeError.message.trim()) {
+      return maybeError.message.trim();
+    }
+  }
+
+  return fallback;
 }

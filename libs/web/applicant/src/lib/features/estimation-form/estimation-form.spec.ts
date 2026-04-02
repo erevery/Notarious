@@ -1,64 +1,154 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { TokenStore, UserRole } from '@notary-portal/ui';
+import { AssessmentApiService } from './assessment-api.service';
+import { DocumentApiService } from './document-api.service';
 import { EstimationForm } from './estimation-form';
+import { EstimationFormSessionService } from './estimation-form-session.service';
+
+const USER_ID = '11111111-1111-4111-8111-111111111111';
+const CITY_ID = 'city-1';
+const DISTRICT_ID = 'district-1';
+const OBJECT_TYPE_VALUE = '1';
+const CONDITION_VALUE = '2';
 
 describe('EstimationForm', () => {
   let component: EstimationForm;
   let fixture: ComponentFixture<EstimationForm>;
   let router: Router;
   let navigateSpy: jest.SpiedFunction<Router['navigate']>;
+  let assessmentApi: {
+    getAssessment: jest.Mock;
+    findLatestDraft: jest.Mock;
+    createDraft: jest.Mock;
+    updateDraft: jest.Mock;
+    listCities: jest.Mock;
+    listDistricts: jest.Mock;
+  };
+  let documentApi: {
+    listDocumentsByAssessment: jest.Mock;
+    uploadDocument: jest.Mock;
+  };
 
   beforeEach(async () => {
+    assessmentApi = {
+      getAssessment: jest.fn(),
+      findLatestDraft: jest.fn().mockResolvedValue(null),
+      createDraft: jest.fn().mockResolvedValue(createDraftModel('assessment-1')),
+      updateDraft: jest.fn(),
+      listCities: jest.fn().mockResolvedValue([{ id: CITY_ID, name: 'Москва' }]),
+      listDistricts: jest
+        .fn()
+        .mockResolvedValue([{ id: DISTRICT_ID, cityId: CITY_ID, name: 'Центральный' }]),
+    };
+
+    documentApi = {
+      listDocumentsByAssessment: jest.fn().mockResolvedValue([]),
+      uploadDocument: jest
+        .fn()
+        .mockResolvedValue(createStoredDocument('document-1', 'passport.pdf', 'document')),
+    };
+
     await TestBed.configureTestingModule({
       imports: [EstimationForm],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AssessmentApiService,
+          useValue: assessmentApi,
+        },
+        {
+          provide: DocumentApiService,
+          useValue: documentApi,
+        },
+        {
+          provide: TokenStore,
+          useValue: {
+            user: signal({
+              id: USER_ID,
+              email: 'applicant@example.com',
+              fullName: 'Applicant User',
+              role: UserRole.Applicant,
+              phoneNumber: '',
+              isActive: true,
+            }),
+            hasSession: jest.fn().mockReturnValue(false),
+          },
+        },
+        {
+          provide: EstimationFormSessionService,
+          useValue: {
+            ensureUserId: jest.fn().mockResolvedValue(USER_ID),
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(EstimationForm);
     component = fixture.componentInstance;
     router = TestBed.inject(Router);
     navigateSpy = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+
     fixture.detectChanges();
     await fixture.whenStable();
+    fixture.detectChanges();
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should submit without additional files when required fields are filled', () => {
-    fillRequiredFields(fixture, component);
+  it('should save draft, upload pending files and navigate to status page', async () => {
+    await fillRequiredFields(fixture, component);
 
-    component.onSubmit(new Event('submit'), getFormElement(fixture));
+    await component.onSubmit(new Event('submit'), getFormElement(fixture));
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/applicant/assessment/status']);
+    expect(assessmentApi.createDraft).toHaveBeenCalledWith(
+      USER_ID,
+      expect.objectContaining({
+        cityId: CITY_ID,
+        address: 'Москва, Тверская ул., д. 10',
+        area: '54.6',
+        objectType: OBJECT_TYPE_VALUE,
+        floorsTotal: '9',
+        condition: CONDITION_VALUE,
+      }),
+    );
+    expect(documentApi.uploadDocument).toHaveBeenCalledTimes(2);
+    expect(navigateSpy).toHaveBeenCalledWith(['/applicant/assessment/status'], {
+      queryParams: { assessmentId: 'assessment-1' },
+    });
     expect(component.validationErrorMessage).toBe('');
   });
 
-  it('should block submission when required documents are missing', () => {
-    fillRequiredFields(fixture, component, { includeDocuments: false });
+  it('should block submission when required documents are missing', async () => {
+    await fillRequiredFields(fixture, component, { includeDocuments: false });
 
-    component.onSubmit(new Event('submit'), getFormElement(fixture));
+    await component.onSubmit(new Event('submit'), getFormElement(fixture));
 
     expect(navigateSpy).not.toHaveBeenCalled();
+    expect(assessmentApi.createDraft).not.toHaveBeenCalled();
     expect(component.validationErrorMessage).toContain('Сканы и документы');
   });
 
-  it('should block submission when a required confirmation is missing', () => {
-    fillRequiredFields(fixture, component, { confirmProcessing: false });
+  it('should block submission when a required confirmation is missing', async () => {
+    await fillRequiredFields(fixture, component, { confirmProcessing: false });
 
-    component.onSubmit(new Event('submit'), getFormElement(fixture));
+    await component.onSubmit(new Event('submit'), getFormElement(fixture));
 
     expect(navigateSpy).not.toHaveBeenCalled();
+    expect(assessmentApi.createDraft).not.toHaveBeenCalled();
     expect(component.validationErrorMessage).toContain('Согласен(на) на обработку данных');
   });
 
-  it('should block submission when correctness confirmation is missing', () => {
-    fillRequiredFields(fixture, component, { confirmCorrect: false });
+  it('should block submission when correctness confirmation is missing', async () => {
+    await fillRequiredFields(fixture, component, { confirmCorrect: false });
 
-    component.onSubmit(new Event('submit'), getFormElement(fixture));
+    await component.onSubmit(new Event('submit'), getFormElement(fixture));
 
     expect(navigateSpy).not.toHaveBeenCalled();
+    expect(assessmentApi.createDraft).not.toHaveBeenCalled();
     expect(component.validationErrorMessage).toContain('Подтверждаю, что данные введены корректно');
   });
 
@@ -91,7 +181,40 @@ describe('EstimationForm', () => {
   });
 });
 
-function fillRequiredFields(
+function createDraftModel(id: string) {
+  return {
+    id,
+    status: 1,
+    form: {
+      cityId: '',
+      districtId: '',
+      address: '',
+      area: '',
+      objectType: '',
+      rooms: '',
+      floorsTotal: '',
+      floor: '',
+      condition: '',
+      yearBuilt: '',
+      wallMaterial: '',
+      elevatorType: '',
+      description: '',
+    },
+  };
+}
+
+function createStoredDocument(id: string, fileName: string, kind: 'document' | 'photo') {
+  return {
+    id,
+    fileName,
+    fileType: kind === 'photo' ? 'image/jpeg' : 'application/pdf',
+    version: 1,
+    uploadedAt: null,
+    kind,
+  };
+}
+
+async function fillRequiredFields(
   fixture: ComponentFixture<EstimationForm>,
   component: EstimationForm,
   options: {
@@ -100,17 +223,19 @@ function fillRequiredFields(
     confirmCorrect?: boolean;
     confirmProcessing?: boolean;
   } = {},
-): void {
-  const nativeElement = fixture.nativeElement as HTMLElement;
-
-  setControlValue(nativeElement, '#city', 'Москва');
-  setControlValue(nativeElement, '#address', 'Москва, Тверская ул., д. 10');
-  setControlValue(nativeElement, '#area', '54.6');
-  setControlValue(nativeElement, '#objectType', 'Квартира');
-  setControlValue(nativeElement, '#floorsTotal', '9');
-  setControlValue(nativeElement, '#condition', 'Хорошее');
-  setCheckboxState(nativeElement, '#confirmCorrect', options.confirmCorrect ?? true);
-  setCheckboxState(nativeElement, '#confirmProcessing', options.confirmProcessing ?? true);
+): Promise<void> {
+  component.form = {
+    ...component.form,
+    cityId: CITY_ID,
+    districtId: DISTRICT_ID,
+    address: 'Москва, Тверская ул., д. 10',
+    area: '54.6',
+    objectType: OBJECT_TYPE_VALUE,
+    floorsTotal: '9',
+    condition: CONDITION_VALUE,
+    confirmCorrect: options.confirmCorrect ?? true,
+    confirmProcessing: options.confirmProcessing ?? true,
+  };
 
   component.documentFiles =
     options.includeDocuments === false ? [] : [createFile('passport.pdf', 'application/pdf')];
@@ -119,33 +244,16 @@ function fillRequiredFields(
   component.additionalFiles = [];
 
   fixture.detectChanges();
-}
-
-function getFormElement(fixture: ComponentFixture<EstimationForm>): HTMLFormElement {
-  return fixture.nativeElement.querySelector('form') as HTMLFormElement;
-}
-
-function setControlValue(root: HTMLElement, selector: string, value: string): void {
-  const control = root.querySelector(selector) as
-    | HTMLInputElement
-    | HTMLSelectElement
-    | HTMLTextAreaElement;
-
-  control.value = value;
-  control.dispatchEvent(new Event('input'));
-  control.dispatchEvent(new Event('change'));
-}
-
-function setCheckboxState(root: HTMLElement, selector: string, checked: boolean): void {
-  const control = root.querySelector(selector) as HTMLInputElement;
-
-  control.checked = checked;
-  control.dispatchEvent(new Event('input'));
-  control.dispatchEvent(new Event('change'));
+  await fixture.whenStable();
+  fixture.detectChanges();
 }
 
 function createFile(name: string, type: string): File {
   return new File(['file-content'], name, { type });
+}
+
+function getFormElement(fixture: ComponentFixture<EstimationForm>): HTMLFormElement {
+  return fixture.nativeElement.querySelector('form') as HTMLFormElement;
 }
 
 function createFileSelectionEvent(inputElement: HTMLInputElement): Event {

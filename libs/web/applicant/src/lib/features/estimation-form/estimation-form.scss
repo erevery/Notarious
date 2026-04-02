@@ -2,6 +2,25 @@
   display: block;
 }
 
+.form-banner {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+
+  font-size: 0.92rem;
+}
+
+.form-banner-error {
+  color: var(--failed-text);
+  background: #fef2f2;
+}
+
+.form-banner-info {
+  color: var(--text-main);
+  background: var(--bg-secondary);
+}
+
 .fieldset {
   margin: 0;
   padding: 1.25rem;
@@ -75,6 +94,10 @@
   margin: 0;
   font-size: 0.8rem;
   color: var(--failed-text);
+}
+
+.form-section-error {
+  margin-bottom: 1rem;
 }
 
 .form-check {
@@ -221,6 +244,10 @@
   padding: 0.75rem;
   border: 1px dashed var(--border);
   border-radius: var(--radius-sm);
+}
+
+.upload-card-readonly {
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
 .upload-card-preview,

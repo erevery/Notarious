@@ -6,6 +6,14 @@
         <p class="card-subtitle m-0">Заполните характеристики недвижимости для формирования заявки на оценку.</p>
       </header>
 
+      @if (loadError()) {
+      <p class="form-banner form-banner-error">{{ loadError() }}</p>
+      } @if (saveError()) {
+      <p class="form-banner form-banner-error">{{ saveError() }}</p>
+      } @if (loading()) {
+      <p class="form-banner form-banner-info">Загружаем текущий черновик и справочники…</p>
+      }
+
       <form
         #valuationForm
         class="form"
@@ -26,13 +34,13 @@
                   id="city"
                   name="city"
                   required
+                  [(ngModel)]="form.cityId"
+                  (ngModelChange)="onCityChange($event)"
                   [class.form-input-invalid]="showValidationErrors && !cityField.validity.valid">
-                  <option value="" selected disabled>Выберите город</option>
-                  <option>Москва</option>
-                  <option>Санкт-Петербург</option>
-                  <option>Казань</option>
-                  <option>Екатеринбург</option>
-                  <option>Новосибирск</option>
+                  <option value="" disabled>Выберите город</option>
+                  @for (city of cities(); track city.id) {
+                  <option [value]="city.id">{{ city.name }}</option>
+                  }
                 </select>
                 @if (showValidationErrors && cityField.validity.valueMissing) {
                 <p class="field-error">Выберите город.</p>
@@ -41,13 +49,11 @@
 
               <div class="form-group no-mb">
                 <label class="form-label" for="district">Район / округ</label>
-                <select class="form-input form-select" id="district" name="district">
-                  <option value="" selected>Не выбрано</option>
-                  <option>Центральный</option>
-                  <option>Северный</option>
-                  <option>Южный</option>
-                  <option>Западный</option>
-                  <option>Восточный</option>
+                <select class="form-input form-select" id="district" name="district" [(ngModel)]="form.districtId">
+                  <option value="">Не выбрано</option>
+                  @for (district of districts(); track district.id) {
+                  <option [value]="district.id">{{ district.name }}</option>
+                  }
                 </select>
               </div>
             </div>
@@ -64,6 +70,7 @@
                 required
                 minlength="8"
                 maxlength="180"
+                [(ngModel)]="form.address"
                 [class.form-input-invalid]="showValidationErrors && !addressField.validity.valid" />
               @if (showValidationErrors && addressField.validity.valueMissing) {
               <p class="field-error">Введите адрес объекта.</p>
@@ -98,6 +105,7 @@
                   step="0.1"
                   inputmode="decimal"
                   placeholder="Например: 54.6"
+                  [(ngModel)]="form.area"
                   [class.form-input-invalid]="showValidationErrors && !areaField.validity.valid" />
                 @if (showValidationErrors && areaField.validity.valueMissing) {
                 <p class="field-error">Укажите площадь объекта.</p>
@@ -115,14 +123,12 @@
                   id="objectType"
                   name="objectType"
                   required
+                  [(ngModel)]="form.objectType"
                   [class.form-input-invalid]="showValidationErrors && !objectTypeField.validity.valid">
-                  <option value="" selected disabled>Выберите тип</option>
-                  <option>Квартира</option>
-                  <option>Дом</option>
-                  <option>Комната</option>
-                  <option>Апартаменты</option>
-                  <option>Земельный участок</option>
-                  <option>Коммерческая недвижимость</option>
+                  <option value="" disabled>Выберите тип</option>
+                  @for (option of objectTypeOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                  }
                 </select>
                 @if (showValidationErrors && objectTypeField.validity.valueMissing) {
                 <p class="field-error">Выберите тип объекта.</p>
@@ -142,6 +148,7 @@
                   step="1"
                   inputmode="numeric"
                   placeholder="Например: 2"
+                  [(ngModel)]="form.rooms"
                   [class.form-input-invalid]="showValidationErrors && !roomsField.validity.valid" />
                 @if ( showValidationErrors && !roomsField.validity.valueMissing && (roomsField.validity.rangeUnderflow
                 || roomsField.validity.rangeOverflow) ) {
@@ -170,6 +177,7 @@
                   max="200"
                   step="1"
                   inputmode="numeric"
+                  [(ngModel)]="form.floorsTotal"
                   [class.form-input-invalid]="showValidationErrors && !floorsTotalField.validity.valid" />
                 @if (showValidationErrors && floorsTotalField.validity.valueMissing) {
                 <p class="field-error">Укажите общую этажность здания.</p>
@@ -191,6 +199,7 @@
                   max="200"
                   step="1"
                   inputmode="numeric"
+                  [(ngModel)]="form.floor"
                   [class.form-input-invalid]="showValidationErrors && !floorField.validity.valid" />
                 @if ( showValidationErrors && !floorField.validity.valueMissing && (floorField.validity.rangeUnderflow
                 || floorField.validity.rangeOverflow) ) {
@@ -207,12 +216,12 @@
                   id="condition"
                   name="condition"
                   required
+                  [(ngModel)]="form.condition"
                   [class.form-input-invalid]="showValidationErrors && !conditionField.validity.valid">
-                  <option value="" selected disabled>Выберите</option>
-                  <option>Новостройка</option>
-                  <option>Хорошее</option>
-                  <option>Требует ремонта</option>
-                  <option>Аварийное</option>
+                  <option value="" disabled>Выберите</option>
+                  @for (option of conditionOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                  }
                 </select>
                 @if (showValidationErrors && conditionField.validity.valueMissing) {
                 <p class="field-error">Выберите состояние объекта.</p>
@@ -232,6 +241,7 @@
                   step="1"
                   inputmode="numeric"
                   placeholder="Например: 2012"
+                  [(ngModel)]="form.yearBuilt"
                   [class.form-input-invalid]="showValidationErrors && !yearBuiltField.validity.valid" />
                 @if ( showValidationErrors && !yearBuiltField.validity.valueMissing &&
                 (yearBuiltField.validity.rangeUnderflow || yearBuiltField.validity.rangeOverflow) ) {
@@ -241,26 +251,23 @@
 
               <div class="form-group no-mb">
                 <label class="form-label" for="wallMaterial">Тип дома</label>
-                <select class="form-input form-select" id="wallMaterial" name="wallMaterial">
-                  <option value="" selected>Не выбрано</option>
-                  <option>Кирпичный</option>
-                  <option>Панельный</option>
-                  <option>Блочный</option>
-                  <option>Монолитный</option>
-                  <option>Монолитно-кирпичный</option>
-                  <option>Деревянный</option>
-                  <option>Газобетонный</option>
+                <select
+                  class="form-input form-select"
+                  id="wallMaterial"
+                  name="wallMaterial"
+                  [(ngModel)]="form.wallMaterial">
+                  @for (option of wallMaterialOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                  }
                 </select>
               </div>
 
               <div class="form-group no-mb">
                 <label class="form-label" for="elevator">Лифт</label>
-                <select class="form-input form-select" id="elevator" name="elevator">
-                  <option value="" selected>Не выбрано</option>
-                  <option>Нет</option>
-                  <option>Грузовой</option>
-                  <option>Пассажирский</option>
-                  <option>Пассажирский и грузовой</option>
+                <select class="form-input form-select" id="elevator" name="elevator" [(ngModel)]="form.elevatorType">
+                  @for (option of elevatorTypeOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                  }
                 </select>
               </div>
             </div>
@@ -273,12 +280,17 @@
                 name="description"
                 rows="4"
                 maxlength="1000"
+                [(ngModel)]="form.description"
                 placeholder="Например: вид из окна, парковка, санузел, наличие обременений (если известно)…"></textarea>
             </div>
           </fieldset>
 
           <fieldset class="fieldset">
             <legend class="fieldset-legend">Документы и фото</legend>
+
+            @if (documentsError()) {
+            <p class="field-error form-section-error">{{ documentsError() }}</p>
+            }
 
             <div class="form-grid form-grid-2">
               <div class="form-group no-mb">
@@ -301,6 +313,22 @@
                 </div>
                 @if (showValidationErrors && isRequiredUploadMissing('documents')) {
                 <p class="field-error">Загрузите хотя бы один документ или скан.</p>
+                } @if (hasStoredDocuments('documents')) {
+                <div class="upload-summary upload-summary-server">
+                  <span class="upload-summary-badge">{{ uploadedDocumentItems().length }}</span>
+                  <span class="upload-summary-text"> Уже сохранено в заявке </span>
+                </div>
+                <ul class="upload-card-list">
+                  @for (document of uploadedDocumentItems(); track document.id) {
+                  <li class="upload-card upload-card-readonly">
+                    <div class="upload-card-icon" aria-hidden="true">DOC</div>
+                    <div class="upload-card-content">
+                      <span class="upload-card-name" [title]="document.fileName">{{ document.fileName }}</span>
+                      <span class="upload-card-meta">{{ formatStoredDocumentMeta(document) }}</span>
+                    </div>
+                  </li>
+                  }
+                </ul>
                 } @if (documentFiles.length) {
                 <div class="upload-summary">
                   <span class="upload-summary-badge">{{ documentFiles.length }}</span>
@@ -368,6 +396,22 @@
                 </div>
                 @if (showValidationErrors && isRequiredUploadMissing('photos')) {
                 <p class="field-error">Загрузите хотя бы одно фото объекта.</p>
+                } @if (hasStoredDocuments('photos')) {
+                <div class="upload-summary upload-summary-server">
+                  <span class="upload-summary-badge">{{ uploadedPhotoItems().length }}</span>
+                  <span class="upload-summary-text"> Уже сохранено в заявке </span>
+                </div>
+                <ul class="upload-card-list">
+                  @for (document of uploadedPhotoItems(); track document.id) {
+                  <li class="upload-card upload-card-readonly">
+                    <div class="upload-card-icon" aria-hidden="true">IMG</div>
+                    <div class="upload-card-content">
+                      <span class="upload-card-name" [title]="document.fileName">{{ document.fileName }}</span>
+                      <span class="upload-card-meta">{{ formatStoredDocumentMeta(document) }}</span>
+                    </div>
+                  </li>
+                  }
+                </ul>
                 } @if (photoFiles.length) {
                 <div class="upload-summary">
                   <span class="upload-summary-badge">{{ photoFiles.length }}</span>
@@ -478,6 +522,7 @@
                 id="confirmCorrect"
                 type="checkbox"
                 name="confirmCorrect"
+                [(ngModel)]="form.confirmCorrect"
                 required />
               <span>
                 Подтверждаю, что данные введены корректно и соответствуют объекту.
@@ -494,6 +539,7 @@
                 type="checkbox"
                 name="confirmProcessing"
                 aria-label="Согласен(на) на обработку данных для проведения оценки."
+                [(ngModel)]="form.confirmProcessing"
                 required />
               <span>
                 <button class="form-check-link" id="confirmProcessingLink" type="button" (click)="openConsentModal()">
@@ -506,7 +552,9 @@
         </div>
 
         <div class="flex flex-wrap gap-4 justify-center mt-6">
-          <button class="btn btn-primary" type="submit">Сохранить параметры</button>
+          <button class="btn btn-primary" type="submit" [disabled]="isBusy()">
+            {{ saving() ? 'Сохраняем…' : 'Сохранить параметры' }}
+          </button>
           <a class="btn btn-outline" href="./requests_table.html">Перейти к заявкам</a>
         </div>
 
