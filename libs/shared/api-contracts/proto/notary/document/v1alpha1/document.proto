@@ -46,6 +46,7 @@ message CreateDocumentRequest {
   string file_path = 4;
   string uploaded_by_id = 5;
   DocumentType document_type = 6;
+  bytes file_content = 7;
 }
 
 message CreateDocumentResponse {
