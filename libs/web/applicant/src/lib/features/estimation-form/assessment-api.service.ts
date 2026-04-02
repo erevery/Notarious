@@ -100,6 +100,7 @@ export class AssessmentApiService {
         cityId: realEstateObject?.cityId ?? '',
         districtId: realEstateObject?.districtId ?? '',
         address: realEstateObject?.address ?? assessment.address,
+        cadastralNumber: realEstateObject?.cadastralNumber ?? '',
         area: realEstateObject?.area ?? '',
         objectType: toSelectValue(realEstateObject?.objectType),
         rooms: toNumberValue(realEstateObject?.roomsCount),
@@ -109,6 +110,10 @@ export class AssessmentApiService {
         yearBuilt: toNumberValue(realEstateObject?.yearBuilt),
         wallMaterial: toSelectValue(realEstateObject?.wallMaterial),
         elevatorType: toSelectValue(realEstateObject?.elevatorType),
+        hasBalconyOrLoggia: realEstateObject?.hasBalconyOrLoggia ?? false,
+        landCategory: realEstateObject?.landCategory ?? '',
+        permittedUse: realEstateObject?.permittedUse ?? '',
+        utilities: realEstateObject?.utilities ?? '',
         description: resolveDescription(assessment, realEstateObject),
       },
     };
@@ -120,6 +125,7 @@ function buildRealEstateObjectInput(form: EstimationFormDraftData) {
     cityId: form.cityId.trim(),
     districtId: normalizeOptionalString(form.districtId),
     address: form.address.trim(),
+    cadastralNumber: normalizeNullableString(form.cadastralNumber),
     area: form.area.trim(),
     objectType: Number(form.objectType),
     roomsCount: normalizeOptionalInteger(form.rooms),
@@ -129,7 +135,11 @@ function buildRealEstateObjectInput(form: EstimationFormDraftData) {
     yearBuilt: normalizeOptionalInteger(form.yearBuilt),
     wallMaterial: normalizeOptionalEnum(form.wallMaterial),
     elevatorType: normalizeOptionalEnum(form.elevatorType),
-    description: normalizeOptionalString(form.description),
+    hasBalconyOrLoggia: form.hasBalconyOrLoggia,
+    landCategory: normalizeNullableString(form.landCategory),
+    permittedUse: normalizeNullableString(form.permittedUse),
+    utilities: normalizeNullableString(form.utilities),
+    description: normalizeNullableString(form.description),
   };
 }
 
@@ -143,6 +153,10 @@ function resolveDescription(
 function normalizeOptionalString(value: string): string | undefined {
   const normalized = value.trim();
   return normalized ? normalized : undefined;
+}
+
+function normalizeNullableString(value: string): string {
+  return value.trim();
 }
 
 function normalizeOptionalInteger(value: string): number | undefined {

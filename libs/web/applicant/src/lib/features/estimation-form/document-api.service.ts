@@ -34,7 +34,7 @@ export class DocumentApiService {
       fileType: params.file.type || 'application/octet-stream',
       filePath: '',
       uploadedById: '',
-      documentType: resolveDocumentType(params.group, params.file),
+      documentType: resolveDocumentType(params.group),
       fileContent: new Uint8Array(await params.file.arrayBuffer()),
     });
 
@@ -57,8 +57,8 @@ export class DocumentApiService {
   }
 }
 
-function resolveDocumentType(group: UploadGroup, file: File): DocumentType {
-  if (group === 'photos' || file.type.startsWith('image/')) {
+function resolveDocumentType(group: UploadGroup): DocumentType {
+  if (group === 'photos') {
     return DocumentType.PHOTO;
   }
 

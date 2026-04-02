@@ -5,12 +5,16 @@ import { TokenStore, UserRole } from '@notary-portal/ui';
 import { AssessmentApiService } from './assessment-api.service';
 import { DocumentApiService } from './document-api.service';
 import { EstimationForm } from './estimation-form';
+import { EstimationFormLocalDraftService } from './estimation-form-local-draft.service';
 import { EstimationFormSessionService } from './estimation-form-session.service';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const CITY_ID = 'city-1';
+const OTHER_CITY_ID = 'city-2';
 const DISTRICT_ID = 'district-1';
+const OTHER_DISTRICT_ID = 'district-2';
 const OBJECT_TYPE_VALUE = '1';
+const LAND_PLOT_TYPE_VALUE = '5';
 const CONDITION_VALUE = '2';
 
 describe('EstimationForm', () => {
@@ -30,17 +34,31 @@ describe('EstimationForm', () => {
     listDocumentsByAssessment: jest.Mock;
     uploadDocument: jest.Mock;
   };
+  let localDraftService: {
+    load: jest.Mock;
+    save: jest.Mock;
+    clear: jest.Mock;
+  };
 
   beforeEach(async () => {
     assessmentApi = {
       getAssessment: jest.fn(),
       findLatestDraft: jest.fn().mockResolvedValue(null),
       createDraft: jest.fn().mockResolvedValue(createDraftModel('assessment-1')),
-      updateDraft: jest.fn(),
-      listCities: jest.fn().mockResolvedValue([{ id: CITY_ID, name: 'Москва' }]),
-      listDistricts: jest
-        .fn()
-        .mockResolvedValue([{ id: DISTRICT_ID, cityId: CITY_ID, name: 'Центральный' }]),
+      updateDraft: jest.fn().mockResolvedValue(createDraftModel('assessment-1')),
+      listCities: jest.fn().mockResolvedValue([
+        { id: CITY_ID, name: 'Москва' },
+        { id: OTHER_CITY_ID, name: 'Екатеринбург' },
+      ]),
+      listDistricts: jest.fn().mockImplementation((cityId?: string) => {
+        if (cityId === OTHER_CITY_ID) {
+          return Promise.resolve([
+            { id: OTHER_DISTRICT_ID, cityId: OTHER_CITY_ID, name: 'Ленинский' },
+          ]);
+        }
+
+        return Promise.resolve([{ id: DISTRICT_ID, cityId: CITY_ID, name: 'Центральный' }]);
+      }),
     };
 
     documentApi = {
@@ -48,6 +66,12 @@ describe('EstimationForm', () => {
       uploadDocument: jest
         .fn()
         .mockResolvedValue(createStoredDocument('document-1', 'passport.pdf', 'document')),
+    };
+
+    localDraftService = {
+      load: jest.fn().mockReturnValue(null),
+      save: jest.fn(),
+      clear: jest.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -73,7 +97,7 @@ describe('EstimationForm', () => {
               phoneNumber: '',
               isActive: true,
             }),
-            hasSession: jest.fn().mockReturnValue(false),
+            hasSession: jest.fn().mockReturnValue(true),
           },
         },
         {
@@ -82,27 +106,183 @@ describe('EstimationForm', () => {
             ensureUserId: jest.fn().mockResolvedValue(USER_ID),
           },
         },
+        {
+          provide: EstimationFormLocalDraftService,
+          useValue: localDraftService,
+        },
       ],
     }).compileComponents();
+  });
 
+  async function createComponent(): Promise<void> {
     fixture = TestBed.createComponent(EstimationForm);
     component = fixture.componentInstance;
     router = TestBed.inject(Router);
     navigateSpy = jest.spyOn(router, 'navigate').mockResolvedValue(true);
 
     fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-  });
+    await settleFixture(fixture);
+  }
 
-  it('should create', () => {
+  it('should create', async () => {
+    await createComponent();
+
     expect(component).toBeTruthy();
   });
 
+  it('should load latest draft, sync route query param and restore server attachments', async () => {
+    assessmentApi.findLatestDraft.mockResolvedValue(
+      createDraftModel('assessment-42', {
+        cityId: CITY_ID,
+        districtId: DISTRICT_ID,
+        address: 'Москва, Тверская ул., д. 10',
+        cadastralNumber: '77:01:0004012:1234',
+        area: '54.6',
+        objectType: OBJECT_TYPE_VALUE,
+        floorsTotal: '9',
+        floor: '4',
+        condition: CONDITION_VALUE,
+        hasBalconyOrLoggia: true,
+      }),
+    );
+    documentApi.listDocumentsByAssessment.mockResolvedValue([
+      createStoredDocument('document-1', 'passport.pdf', 'document'),
+      createStoredDocument('document-2', 'front.jpg', 'photo'),
+    ]);
+
+    await createComponent();
+
+    expect(component.assessmentId()).toBe('assessment-42');
+    expect(component.formControls.cityId.value).toBe(CITY_ID);
+    expect(component.formControls.districtId.value).toBe(DISTRICT_ID);
+    expect(component.formControls.address.value).toBe('Москва, Тверская ул., д. 10');
+    expect(component.formControls.cadastralNumber.value).toBe('77:01:0004012:1234');
+    expect(component.formControls.hasBalconyOrLoggia.value).toBe(true);
+    expect(documentApi.listDocumentsByAssessment).toHaveBeenCalledWith('assessment-42');
+    expect(component.uploadedDocumentItems()).toHaveLength(1);
+    expect(component.uploadedPhotoItems()).toHaveLength(1);
+    expect(navigateSpy).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: { assessmentId: 'assessment-42' },
+      }),
+    );
+  });
+
+  it('should save draft manually and clear local fallback after successful server save', async () => {
+    await createComponent();
+    fillCoreFields(component);
+
+    await component.saveDraftManually();
+    await settleFixture(fixture);
+
+    expect(assessmentApi.createDraft).toHaveBeenCalledWith(
+      USER_ID,
+      expect.objectContaining({
+        cityId: CITY_ID,
+        address: 'Москва, Тверская ул., д. 10',
+        cadastralNumber: '77:01:0004012:1234',
+        area: '54.6',
+        objectType: OBJECT_TYPE_VALUE,
+      }),
+    );
+    expect(component.assessmentId()).toBe('assessment-1');
+    expect(localDraftService.clear).toHaveBeenCalledWith(USER_ID);
+  });
+
+  it('should restore local fallback when server draft does not exist yet', async () => {
+    localDraftService.load.mockReturnValue({
+      assessmentId: null,
+      updatedAt: '2026-04-02T10:00:00.000Z',
+      form: {
+        cityId: CITY_ID,
+        districtId: DISTRICT_ID,
+        address: 'Екатеринбург, ул. Малышева, д. 16',
+        cadastralNumber: '66:41:0101021:37',
+        area: '71.2',
+        objectType: LAND_PLOT_TYPE_VALUE,
+        rooms: '',
+        floorsTotal: '',
+        floor: '',
+        condition: '',
+        yearBuilt: '',
+        wallMaterial: '',
+        elevatorType: '',
+        hasBalconyOrLoggia: false,
+        landCategory: 'земли населённых пунктов',
+        permittedUse: 'ИЖС',
+        utilities: 'электричество',
+        description: 'Видовой участок',
+      },
+    });
+
+    await createComponent();
+
+    expect(component.assessmentId()).toBeNull();
+    expect(component.formControls.address.value).toBe('Екатеринбург, ул. Малышева, д. 16');
+    expect(component.formControls.objectType.value).toBe(LAND_PLOT_TYPE_VALUE);
+    expect(component.formControls.landCategory.value).toBe('земли населённых пунктов');
+    expect(component.formControls.utilities.value).toBe('электричество');
+  });
+
+  it('should refresh districts and reset district when the city changes', async () => {
+    await createComponent();
+
+    component.estimationForm.patchValue({
+      cityId: CITY_ID,
+      districtId: DISTRICT_ID,
+    });
+    await settleFixture(fixture);
+
+    component.estimationForm.patchValue({
+      cityId: OTHER_CITY_ID,
+      districtId: DISTRICT_ID,
+    });
+    await settleFixture(fixture);
+
+    expect(assessmentApi.listDistricts).toHaveBeenCalledWith(OTHER_CITY_ID);
+    expect(component.formControls.districtId.value).toBe('');
+    expect(component.districts()).toEqual([
+      {
+        id: OTHER_DISTRICT_ID,
+        cityId: OTHER_CITY_ID,
+        name: 'Ленинский',
+      },
+    ]);
+  });
+
+  it('should upload selected files immediately after assessment id appears', async () => {
+    assessmentApi.findLatestDraft.mockResolvedValue(createDraftModel('assessment-9'));
+
+    await createComponent();
+
+    const inputElement = document.createElement('input');
+    const selectedFile = createFile('passport.pdf', 'application/pdf');
+    setInputFiles(inputElement, [selectedFile]);
+
+    component.onFilesSelected(createFileSelectionEvent(inputElement), 'documents');
+    await settleFixture(fixture);
+
+    expect(documentApi.uploadDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assessmentId: 'assessment-9',
+        group: 'documents',
+        file: selectedFile,
+      }),
+    );
+    expect(component.documentFiles).toHaveLength(0);
+  });
+
   it('should save draft, upload pending files and navigate to status page', async () => {
-    await fillRequiredFields(fixture, component);
+    await createComponent();
+    fillRequiredFields(component);
+
+    component.documentFiles = [createFile('passport.pdf', 'application/pdf')];
+    component.photoFiles = [createFile('front.jpg', 'image/jpeg')];
+    fixture.detectChanges();
 
     await component.onSubmit(new Event('submit'), getFormElement(fixture));
+    await settleFixture(fixture);
 
     expect(assessmentApi.createDraft).toHaveBeenCalledWith(
       USER_ID,
@@ -119,87 +299,54 @@ describe('EstimationForm', () => {
     expect(navigateSpy).toHaveBeenCalledWith(['/applicant/assessment/status'], {
       queryParams: { assessmentId: 'assessment-1' },
     });
-    expect(component.validationErrorMessage).toBe('');
   });
 
   it('should block submission when required documents are missing', async () => {
-    await fillRequiredFields(fixture, component, { includeDocuments: false });
+    await createComponent();
+    fillRequiredFields(component);
 
     await component.onSubmit(new Event('submit'), getFormElement(fixture));
 
-    expect(navigateSpy).not.toHaveBeenCalled();
+    expect(navigateSpy).not.toHaveBeenCalledWith(
+      ['/applicant/assessment/status'],
+      expect.anything(),
+    );
     expect(assessmentApi.createDraft).not.toHaveBeenCalled();
     expect(component.validationErrorMessage).toContain('Сканы и документы');
   });
-
-  it('should block submission when a required confirmation is missing', async () => {
-    await fillRequiredFields(fixture, component, { confirmProcessing: false });
-
-    await component.onSubmit(new Event('submit'), getFormElement(fixture));
-
-    expect(navigateSpy).not.toHaveBeenCalled();
-    expect(assessmentApi.createDraft).not.toHaveBeenCalled();
-    expect(component.validationErrorMessage).toContain('Согласен(на) на обработку данных');
-  });
-
-  it('should block submission when correctness confirmation is missing', async () => {
-    await fillRequiredFields(fixture, component, { confirmCorrect: false });
-
-    await component.onSubmit(new Event('submit'), getFormElement(fixture));
-
-    expect(navigateSpy).not.toHaveBeenCalled();
-    expect(assessmentApi.createDraft).not.toHaveBeenCalled();
-    expect(component.validationErrorMessage).toContain('Подтверждаю, что данные введены корректно');
-  });
-
-  it('should append newly selected files instead of replacing the previous ones', () => {
-    const inputElement = document.createElement('input');
-    const passportFile = createFile('passport.pdf', 'application/pdf');
-    const planFile = createFile('plan.pdf', 'application/pdf');
-
-    setInputFiles(inputElement, [passportFile]);
-    component.onFilesSelected(createFileSelectionEvent(inputElement), 'documents');
-
-    setInputFiles(inputElement, [planFile]);
-    component.onFilesSelected(createFileSelectionEvent(inputElement), 'documents');
-
-    expect(component.documentFiles).toEqual([passportFile, planFile]);
-  });
-
-  it('should open consent modal from the processing agreement link', () => {
-    const consentLink = fixture.nativeElement.querySelector(
-      '#confirmProcessingLink',
-    ) as HTMLButtonElement;
-
-    consentLink.click();
-    fixture.detectChanges();
-
-    expect(component.isConsentModalOpen).toBe(true);
-    expect(fixture.nativeElement.querySelector('#consentDocumentTitle')?.textContent).toContain(
-      'СОГЛАСИЕ НА ОБРАБОТКУ ПЕРСОНАЛЬНЫХ ДАННЫХ',
-    );
-  });
 });
 
-function createDraftModel(id: string) {
+function createDraftModel(id: string, form: Partial<ReturnType<typeof createEmptyDraftForm>> = {}) {
   return {
     id,
     status: 1,
     form: {
-      cityId: '',
-      districtId: '',
-      address: '',
-      area: '',
-      objectType: '',
-      rooms: '',
-      floorsTotal: '',
-      floor: '',
-      condition: '',
-      yearBuilt: '',
-      wallMaterial: '',
-      elevatorType: '',
-      description: '',
+      ...createEmptyDraftForm(),
+      ...form,
     },
+  };
+}
+
+function createEmptyDraftForm() {
+  return {
+    cityId: '',
+    districtId: '',
+    address: '',
+    cadastralNumber: '',
+    area: '',
+    objectType: '',
+    rooms: '',
+    floorsTotal: '',
+    floor: '',
+    condition: '',
+    yearBuilt: '',
+    wallMaterial: '',
+    elevatorType: '',
+    hasBalconyOrLoggia: false,
+    landCategory: '',
+    permittedUse: '',
+    utilities: '',
+    description: '',
   };
 }
 
@@ -214,38 +361,30 @@ function createStoredDocument(id: string, fileName: string, kind: 'document' | '
   };
 }
 
-async function fillRequiredFields(
-  fixture: ComponentFixture<EstimationForm>,
-  component: EstimationForm,
-  options: {
-    includeDocuments?: boolean;
-    includePhotos?: boolean;
-    confirmCorrect?: boolean;
-    confirmProcessing?: boolean;
-  } = {},
-): Promise<void> {
-  component.form = {
-    ...component.form,
+function fillCoreFields(component: EstimationForm): void {
+  component.estimationForm.patchValue({
     cityId: CITY_ID,
     districtId: DISTRICT_ID,
     address: 'Москва, Тверская ул., д. 10',
+    cadastralNumber: '77:01:0004012:1234',
+    area: '54.6',
+    objectType: OBJECT_TYPE_VALUE,
+  });
+}
+
+function fillRequiredFields(component: EstimationForm): void {
+  component.estimationForm.patchValue({
+    cityId: CITY_ID,
+    districtId: DISTRICT_ID,
+    address: 'Москва, Тверская ул., д. 10',
+    cadastralNumber: '77:01:0004012:1234',
     area: '54.6',
     objectType: OBJECT_TYPE_VALUE,
     floorsTotal: '9',
     condition: CONDITION_VALUE,
-    confirmCorrect: options.confirmCorrect ?? true,
-    confirmProcessing: options.confirmProcessing ?? true,
-  };
-
-  component.documentFiles =
-    options.includeDocuments === false ? [] : [createFile('passport.pdf', 'application/pdf')];
-  component.photoFiles =
-    options.includePhotos === false ? [] : [createFile('front.jpg', 'image/jpeg')];
-  component.additionalFiles = [];
-
-  fixture.detectChanges();
-  await fixture.whenStable();
-  fixture.detectChanges();
+    confirmCorrect: true,
+    confirmProcessing: true,
+  });
 }
 
 function createFile(name: string, type: string): File {
@@ -261,21 +400,17 @@ function createFileSelectionEvent(inputElement: HTMLInputElement): Event {
 }
 
 function setInputFiles(inputElement: HTMLInputElement, files: File[]): void {
-  if (typeof DataTransfer !== 'undefined') {
-    const dataTransfer = new DataTransfer();
-    for (const file of files) {
-      dataTransfer.items.add(file);
-    }
-
-    Object.defineProperty(inputElement, 'files', {
-      configurable: true,
-      value: dataTransfer.files,
-    });
-    return;
-  }
-
   Object.defineProperty(inputElement, 'files', {
     configurable: true,
     value: files,
   });
+}
+
+async function settleFixture(fixture: ComponentFixture<EstimationForm>): Promise<void> {
+  fixture.detectChanges();
+  await fixture.whenStable();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
 }

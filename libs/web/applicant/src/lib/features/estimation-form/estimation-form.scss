@@ -71,6 +71,11 @@
   padding: 0.5rem;
 }
 
+.form-file:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .form-file::file-selector-button {
   cursor: pointer;
 
@@ -83,6 +88,11 @@
   color: var(--text-main);
 
   background-color: var(--bg-secondary);
+}
+
+.form-file:disabled::file-selector-button {
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .form-help {
@@ -451,6 +461,21 @@
   transform: translateY(-1px);
   border-color: #fca5a5;
   color: #b91c1c;
+}
+
+.photo-card-remove:disabled,
+.upload-list-remove:disabled {
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.55;
+}
+
+.photo-card-remove:disabled:hover,
+.upload-list-remove:disabled:hover {
+  transform: none;
+  border-color: var(--border);
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
 }
 
 .upload-list-remove:focus-visible,

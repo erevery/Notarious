@@ -24,6 +24,7 @@ export interface EstimationFormDraftData {
   cityId: string;
   districtId: string;
   address: string;
+  cadastralNumber: string;
   area: string;
   objectType: string;
   rooms: string;
@@ -33,6 +34,10 @@ export interface EstimationFormDraftData {
   yearBuilt: string;
   wallMaterial: string;
   elevatorType: string;
+  hasBalconyOrLoggia: boolean;
+  landCategory: string;
+  permittedUse: string;
+  utilities: string;
   description: string;
 }
 
@@ -60,6 +65,7 @@ export const INITIAL_ESTIMATION_FORM_VALUE: EstimationFormValue = {
   cityId: '',
   districtId: '',
   address: '',
+  cadastralNumber: '',
   area: '',
   objectType: '',
   rooms: '',
@@ -69,6 +75,10 @@ export const INITIAL_ESTIMATION_FORM_VALUE: EstimationFormValue = {
   yearBuilt: '',
   wallMaterial: '',
   elevatorType: '',
+  hasBalconyOrLoggia: false,
+  landCategory: '',
+  permittedUse: '',
+  utilities: '',
   description: '',
   confirmCorrect: false,
   confirmProcessing: false,

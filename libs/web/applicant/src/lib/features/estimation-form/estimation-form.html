@@ -10,15 +10,17 @@
       <p class="form-banner form-banner-error">{{ loadError() }}</p>
       } @if (saveError()) {
       <p class="form-banner form-banner-error">{{ saveError() }}</p>
-      } @if (loading()) {
-      <p class="form-banner form-banner-info">Загружаем текущий черновик и справочники…</p>
+      } @if (validationErrorMessage) {
+      <p class="form-banner form-banner-error">{{ validationErrorMessage }}</p>
       }
+      <p class="form-banner form-banner-info">{{ draftStatusMessage() }}</p>
 
       <form
         #valuationForm
         class="form"
         id="valuationForm"
         novalidate
+        [formGroup]="estimationForm"
         [class.form--submitted]="showValidationErrors"
         (submit)="onSubmit($event, valuationForm)">
         <div class="flex-col gap-4">
@@ -29,27 +31,23 @@
               <div class="form-group no-mb">
                 <label class="form-label" for="city">Город <span class="required-mark">*</span></label>
                 <select
-                  #cityField
                   class="form-input form-select"
                   id="city"
-                  name="city"
-                  required
-                  [(ngModel)]="form.cityId"
-                  (ngModelChange)="onCityChange($event)"
-                  [class.form-input-invalid]="showValidationErrors && !cityField.validity.valid">
+                  formControlName="cityId"
+                  [class.form-input-invalid]="isControlInvalid(formControls.cityId)">
                   <option value="" disabled>Выберите город</option>
                   @for (city of cities(); track city.id) {
                   <option [value]="city.id">{{ city.name }}</option>
                   }
                 </select>
-                @if (showValidationErrors && cityField.validity.valueMissing) {
+                @if (isControlInvalid(formControls.cityId) && formControls.cityId.hasError('required')) {
                 <p class="field-error">Выберите город.</p>
                 }
               </div>
 
               <div class="form-group no-mb">
                 <label class="form-label" for="district">Район / округ</label>
-                <select class="form-input form-select" id="district" name="district" [(ngModel)]="form.districtId">
+                <select class="form-input form-select" id="district" formControlName="districtId">
                   <option value="">Не выбрано</option>
                   @for (district of districts(); track district.id) {
                   <option [value]="district.id">{{ district.name }}</option>
@@ -58,32 +56,43 @@
               </div>
             </div>
 
-            <div class="form-group no-mb mt-6">
-              <label class="form-label" for="address">Адрес (с подсказками) <span class="required-mark">*</span></label>
-              <input
-                #addressField
-                class="form-input"
-                id="address"
-                name="address"
-                list="address-suggestions"
-                placeholder="Введите адрес"
-                required
-                minlength="8"
-                maxlength="180"
-                [(ngModel)]="form.address"
-                [class.form-input-invalid]="showValidationErrors && !addressField.validity.valid" />
-              @if (showValidationErrors && addressField.validity.valueMissing) {
-              <p class="field-error">Введите адрес объекта.</p>
-              } @if (showValidationErrors && !addressField.validity.valueMissing && addressField.validity.tooShort) {
-              <p class="field-error">Адрес слишком короткий (минимум 8 символов).</p>
-              }
-              <datalist id="address-suggestions">
-                <option value="Москва, Тверская ул., д. 10"></option>
-                <option value="Москва, Ленинский пр-т, д. 45"></option>
-                <option value="Санкт-Петербург, Невский пр-т, д. 28"></option>
-                <option value="Казань, ул. Баумана, д. 5"></option>
-                <option value="Екатеринбург, ул. Малышева, д. 16"></option>
-              </datalist>
+            <div class="form-grid form-grid-2 mt-6">
+              <div class="form-group no-mb">
+                <label class="form-label" for="address">
+                  Адрес (с подсказками) <span class="required-mark">*</span>
+                </label>
+                <input
+                  class="form-input"
+                  id="address"
+                  formControlName="address"
+                  list="address-suggestions"
+                  placeholder="Введите адрес"
+                  [class.form-input-invalid]="isControlInvalid(formControls.address)" />
+                @if (isControlInvalid(formControls.address) && formControls.address.hasError('required')) {
+                <p class="field-error">Введите адрес объекта.</p>
+                } @if ( isControlInvalid(formControls.address) && !formControls.address.hasError('required') &&
+                formControls.address.hasError('minlength') ) {
+                <p class="field-error">Адрес слишком короткий (минимум 8 символов).</p>
+                }
+                <datalist id="address-suggestions">
+                  <option value="Москва, Тверская ул., д. 10"></option>
+                  <option value="Москва, Ленинский пр-т, д. 45"></option>
+                  <option value="Санкт-Петербург, Невский пр-т, д. 28"></option>
+                  <option value="Казань, ул. Баумана, д. 5"></option>
+                  <option value="Екатеринбург, ул. Малышева, д. 16"></option>
+                </datalist>
+              </div>
+
+              <div class="form-group no-mb">
+                <label class="form-label" for="cadastralNumber">Кадастровый номер</label>
+                <input
+                  class="form-input"
+                  id="cadastralNumber"
+                  formControlName="cadastralNumber"
+                  maxlength="64"
+                  placeholder="Например: 66:41:0101021:37" />
+                <div class="form-help">Опционально. Поле тоже сохраняется и восстанавливается из draft.</div>
+              </div>
             </div>
           </fieldset>
 
@@ -94,23 +103,18 @@
               <div class="form-group no-mb">
                 <label class="form-label" for="area">Площадь, м² <span class="required-mark">*</span></label>
                 <input
-                  #areaField
                   class="form-input"
                   id="area"
-                  name="area"
-                  type="number"
-                  required
-                  min="1"
-                  max="100000"
-                  step="0.1"
+                  type="text"
+                  formControlName="area"
                   inputmode="decimal"
                   placeholder="Например: 54.6"
-                  [(ngModel)]="form.area"
-                  [class.form-input-invalid]="showValidationErrors && !areaField.validity.valid" />
-                @if (showValidationErrors && areaField.validity.valueMissing) {
+                  [class.form-input-invalid]="isControlInvalid(formControls.area)" />
+                @if (isControlInvalid(formControls.area) && formControls.area.hasError('required')) {
                 <p class="field-error">Укажите площадь объекта.</p>
-                } @if ( showValidationErrors && !areaField.validity.valueMissing && (areaField.validity.rangeUnderflow
-                || areaField.validity.rangeOverflow) ) {
+                } @if (isControlInvalid(formControls.area) && formControls.area.hasError('decimal')) {
+                <p class="field-error">Введите площадь положительным числом, например 54.6.</p>
+                } @if (isControlInvalid(formControls.area) && formControls.area.hasError('range')) {
                 <p class="field-error">Площадь должна быть в диапазоне от 1 до 100000 м².</p>
                 }
               </div>
@@ -118,19 +122,16 @@
               <div class="form-group no-mb">
                 <label class="form-label" for="objectType">Тип объекта <span class="required-mark">*</span></label>
                 <select
-                  #objectTypeField
                   class="form-input form-select"
                   id="objectType"
-                  name="objectType"
-                  required
-                  [(ngModel)]="form.objectType"
-                  [class.form-input-invalid]="showValidationErrors && !objectTypeField.validity.valid">
+                  formControlName="objectType"
+                  [class.form-input-invalid]="isControlInvalid(formControls.objectType)">
                   <option value="" disabled>Выберите тип</option>
                   @for (option of objectTypeOptions; track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
                   }
                 </select>
-                @if (showValidationErrors && objectTypeField.validity.valueMissing) {
+                @if (isControlInvalid(formControls.objectType) && formControls.objectType.hasError('required')) {
                 <p class="field-error">Выберите тип объекта.</p>
                 }
               </div>
@@ -138,20 +139,16 @@
               <div class="form-group no-mb">
                 <label class="form-label" for="rooms">Кол-во комнат</label>
                 <input
-                  #roomsField
                   class="form-input"
                   id="rooms"
-                  name="rooms"
-                  type="number"
-                  min="0"
-                  max="50"
-                  step="1"
+                  type="text"
+                  formControlName="rooms"
                   inputmode="numeric"
                   placeholder="Например: 2"
-                  [(ngModel)]="form.rooms"
-                  [class.form-input-invalid]="showValidationErrors && !roomsField.validity.valid" />
-                @if ( showValidationErrors && !roomsField.validity.valueMissing && (roomsField.validity.rangeUnderflow
-                || roomsField.validity.rangeOverflow) ) {
+                  [class.form-input-invalid]="isControlInvalid(formControls.rooms)" />
+                @if (isControlInvalid(formControls.rooms) && formControls.rooms.hasError('integer')) {
+                <p class="field-error">Количество комнат должно быть целым числом.</p>
+                } @if (isControlInvalid(formControls.rooms) && formControls.rooms.hasError('range')) {
                 <p class="field-error">Количество комнат должно быть от 0 до 50.</p>
                 }
               </div>
@@ -161,28 +158,59 @@
           <fieldset class="fieldset">
             <legend class="fieldset-legend">Характеристики</legend>
 
+            @if (isLandPlotSelected()) {
+            <div class="form-grid form-grid-3">
+              <div class="form-group no-mb">
+                <label class="form-label" for="landCategory">Категория земли</label>
+                <input
+                  class="form-input"
+                  id="landCategory"
+                  formControlName="landCategory"
+                  maxlength="150"
+                  placeholder="Например: земли населённых пунктов" />
+              </div>
+
+              <div class="form-group no-mb">
+                <label class="form-label" for="permittedUse">ВРИ</label>
+                <input
+                  class="form-input"
+                  id="permittedUse"
+                  formControlName="permittedUse"
+                  maxlength="150"
+                  placeholder="Например: ИЖС" />
+              </div>
+
+              <div class="form-group no-mb">
+                <label class="form-label" for="utilities">Коммуникации</label>
+                <input
+                  class="form-input"
+                  id="utilities"
+                  formControlName="utilities"
+                  maxlength="500"
+                  placeholder="Газ, электричество, вода и т. д." />
+              </div>
+            </div>
+            <div class="form-help mt-6">
+              Для земельного участка доступны отдельные поля по категории земли, ВРИ и коммуникациям.
+            </div>
+            } @else {
             <div class="form-grid form-grid-3">
               <div class="form-group no-mb">
                 <label class="form-label" for="floorsTotal">
                   Этажность (всего этажей) <span class="required-mark">*</span>
                 </label>
                 <input
-                  #floorsTotalField
                   class="form-input"
                   id="floorsTotal"
-                  name="floorsTotal"
-                  type="number"
-                  required
-                  min="1"
-                  max="200"
-                  step="1"
+                  type="text"
+                  formControlName="floorsTotal"
                   inputmode="numeric"
-                  [(ngModel)]="form.floorsTotal"
-                  [class.form-input-invalid]="showValidationErrors && !floorsTotalField.validity.valid" />
-                @if (showValidationErrors && floorsTotalField.validity.valueMissing) {
+                  [class.form-input-invalid]="isControlInvalid(formControls.floorsTotal)" />
+                @if ( isControlInvalid(formControls.floorsTotal) && formControls.floorsTotal.hasError('required') ) {
                 <p class="field-error">Укажите общую этажность здания.</p>
-                } @if ( showValidationErrors && !floorsTotalField.validity.valueMissing &&
-                (floorsTotalField.validity.rangeUnderflow || floorsTotalField.validity.rangeOverflow) ) {
+                } @if ( isControlInvalid(formControls.floorsTotal) && formControls.floorsTotal.hasError('integer') ) {
+                <p class="field-error">Этажность должна быть целым числом.</p>
+                } @if ( isControlInvalid(formControls.floorsTotal) && formControls.floorsTotal.hasError('range') ) {
                 <p class="field-error">Этажность должна быть в диапазоне от 1 до 200.</p>
                 }
               </div>
@@ -190,40 +218,33 @@
               <div class="form-group no-mb">
                 <label class="form-label" for="floor">Этаж</label>
                 <input
-                  #floorField
                   class="form-input"
                   id="floor"
-                  name="floor"
-                  type="number"
-                  min="0"
-                  max="200"
-                  step="1"
+                  type="text"
+                  formControlName="floor"
                   inputmode="numeric"
-                  [(ngModel)]="form.floor"
-                  [class.form-input-invalid]="showValidationErrors && !floorField.validity.valid" />
-                @if ( showValidationErrors && !floorField.validity.valueMissing && (floorField.validity.rangeUnderflow
-                || floorField.validity.rangeOverflow) ) {
+                  [class.form-input-invalid]="isControlInvalid(formControls.floor)" />
+                @if (isControlInvalid(formControls.floor) && formControls.floor.hasError('integer')) {
+                <p class="field-error">Этаж должен быть целым числом.</p>
+                } @if (isControlInvalid(formControls.floor) && formControls.floor.hasError('range')) {
                 <p class="field-error">Этаж должен быть в диапазоне от 0 до 200.</p>
                 }
-                <div class="form-help">0 — если частный дом/участок.</div>
+                <div class="form-help">0 — если частный дом.</div>
               </div>
 
               <div class="form-group no-mb">
                 <label class="form-label" for="condition">Состояние <span class="required-mark">*</span></label>
                 <select
-                  #conditionField
                   class="form-input form-select"
                   id="condition"
-                  name="condition"
-                  required
-                  [(ngModel)]="form.condition"
-                  [class.form-input-invalid]="showValidationErrors && !conditionField.validity.valid">
+                  formControlName="condition"
+                  [class.form-input-invalid]="isControlInvalid(formControls.condition)">
                   <option value="" disabled>Выберите</option>
                   @for (option of conditionOptions; track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
                   }
                 </select>
-                @if (showValidationErrors && conditionField.validity.valueMissing) {
+                @if (isControlInvalid(formControls.condition) && formControls.condition.hasError('required')) {
                 <p class="field-error">Выберите состояние объекта.</p>
                 }
               </div>
@@ -231,31 +252,23 @@
               <div class="form-group no-mb">
                 <label class="form-label" for="yearBuilt">Год постройки</label>
                 <input
-                  #yearBuiltField
                   class="form-input"
                   id="yearBuilt"
-                  name="yearBuilt"
-                  type="number"
-                  min="1700"
-                  max="2100"
-                  step="1"
+                  type="text"
+                  formControlName="yearBuilt"
                   inputmode="numeric"
                   placeholder="Например: 2012"
-                  [(ngModel)]="form.yearBuilt"
-                  [class.form-input-invalid]="showValidationErrors && !yearBuiltField.validity.valid" />
-                @if ( showValidationErrors && !yearBuiltField.validity.valueMissing &&
-                (yearBuiltField.validity.rangeUnderflow || yearBuiltField.validity.rangeOverflow) ) {
+                  [class.form-input-invalid]="isControlInvalid(formControls.yearBuilt)" />
+                @if (isControlInvalid(formControls.yearBuilt) && formControls.yearBuilt.hasError('integer')) {
+                <p class="field-error">Год постройки должен быть целым числом.</p>
+                } @if (isControlInvalid(formControls.yearBuilt) && formControls.yearBuilt.hasError('range')) {
                 <p class="field-error">Год постройки должен быть в диапазоне от 1700 до 2100.</p>
                 }
               </div>
 
               <div class="form-group no-mb">
                 <label class="form-label" for="wallMaterial">Тип дома</label>
-                <select
-                  class="form-input form-select"
-                  id="wallMaterial"
-                  name="wallMaterial"
-                  [(ngModel)]="form.wallMaterial">
+                <select class="form-input form-select" id="wallMaterial" formControlName="wallMaterial">
                   @for (option of wallMaterialOptions; track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
                   }
@@ -264,7 +277,7 @@
 
               <div class="form-group no-mb">
                 <label class="form-label" for="elevator">Лифт</label>
-                <select class="form-input form-select" id="elevator" name="elevator" [(ngModel)]="form.elevatorType">
+                <select class="form-input form-select" id="elevator" formControlName="elevatorType">
                   @for (option of elevatorTypeOptions; track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
                   }
@@ -272,15 +285,24 @@
               </div>
             </div>
 
+            <label class="form-check mt-6">
+              <input
+                class="form-check-input"
+                id="hasBalconyOrLoggia"
+                type="checkbox"
+                formControlName="hasBalconyOrLoggia" />
+              <span>Есть балкон или лоджия</span>
+            </label>
+            }
+
             <div class="form-group no-mb mt-6">
               <label class="form-label" for="description">Описание (доп. параметры)</label>
               <textarea
                 class="form-input form-textarea"
                 id="description"
-                name="description"
+                formControlName="description"
                 rows="4"
                 maxlength="1000"
-                [(ngModel)]="form.description"
                 placeholder="Например: вид из окна, парковка, санузел, наличие обременений (если известно)…"></textarea>
             </div>
           </fieldset>
@@ -301,15 +323,16 @@
                   #documentFilesField
                   class="form-input form-file"
                   id="documentFiles"
-                  name="documentFiles"
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx"
                   multiple
+                  [disabled]="!canUploadFiles() || isGroupUploading('documents')"
                   [class.form-input-invalid]="showValidationErrors && isRequiredUploadMissing('documents')"
                   (change)="onFilesSelected($event, 'documents')" />
                 <div class="form-help">
+                  @if (!hasAssessmentId()) { Загрузка станет доступна после появления серверного черновика. } @else {
                   Поддерживаются PDF, DOC/DOCX и сканы/изображения (JPG, PNG, HEIC). Файлы можно добавлять в несколько
-                  подходов.
+                  подходов. }
                 </div>
                 @if (showValidationErrors && isRequiredUploadMissing('documents')) {
                 <p class="field-error">Загрузите хотя бы один документ или скан.</p>
@@ -352,7 +375,8 @@
                     <div class="upload-card-content">
                       <span class="upload-card-name" [title]="file.name">{{ file.name }}</span>
                       <span class="upload-card-meta">
-                        {{ getFileCategoryLabel(file) }} · {{ formatFileSize(file.size) }}
+                        {{ getFileCategoryLabel(file) }} · {{ formatFileSize(file.size) }} @if
+                        (isGroupUploading('documents')) { · Загружается… } @else { · Ожидает повторной отправки }
                       </span>
                     </div>
 
@@ -368,6 +392,7 @@
                       <button
                         class="upload-list-remove"
                         type="button"
+                        [disabled]="isGroupUploading('documents')"
                         [attr.aria-label]="'Удалить файл ' + file.name"
                         (click)="removeFile(documentFilesField, 'documents', $index)">
                         <span aria-hidden="true">×</span>
@@ -385,14 +410,15 @@
                   #photoFilesField
                   class="form-input form-file"
                   id="photoFiles"
-                  name="photoFiles"
                   type="file"
                   accept="image/*"
                   multiple
+                  [disabled]="!canUploadFiles() || isGroupUploading('photos')"
                   [class.form-input-invalid]="showValidationErrors && isRequiredUploadMissing('photos')"
                   (change)="onFilesSelected($event, 'photos')" />
                 <div class="form-help">
-                  Добавьте фото фасада, комнат и состояния объекта. Новые файлы добавляются к уже выбранным.
+                  @if (!hasAssessmentId()) { Фото можно будет прикрепить после сохранения server draft. } @else {
+                  Добавьте фото фасада, комнат и состояния объекта. Новые файлы добавляются к уже выбранным. }
                 </div>
                 @if (showValidationErrors && isRequiredUploadMissing('photos')) {
                 <p class="field-error">Загрузите хотя бы одно фото объекта.</p>
@@ -423,6 +449,7 @@
                     <button
                       class="photo-card-remove"
                       type="button"
+                      [disabled]="isGroupUploading('photos')"
                       [attr.aria-label]="'Удалить файл ' + file.name"
                       (click)="removeFile(photoFilesField, 'photos', $index)">
                       <span aria-hidden="true">×</span>
@@ -438,7 +465,10 @@
 
                     <div class="photo-card-caption">
                       <span class="photo-card-name" [title]="file.name">{{ file.name }}</span>
-                      <span class="photo-card-meta">{{ formatFileSize(file.size) }}</span>
+                      <span class="photo-card-meta">
+                        {{ formatFileSize(file.size) }} @if (isGroupUploading('photos')) { · Загружается… } @else { ·
+                        Ожидает повторной отправки }
+                      </span>
                     </div>
                   </li>
                   }
@@ -453,13 +483,15 @@
                 #additionalFilesField
                 class="form-input form-file"
                 id="additionalFiles"
-                name="additionalFiles"
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
                 multiple
+                [disabled]="!canUploadFiles() || isGroupUploading('additional')"
                 (change)="onFilesSelected($event, 'additional')" />
               <div class="form-help">
-                При необходимости добавьте доп. справки, планы или иные материалы. Можно выбирать файлы несколько раз.
+                @if (!hasAssessmentId()) { Дополнительные файлы станут доступны после создания черновика на сервере. }
+                @else { При необходимости добавьте доп. справки, планы или иные материалы. Можно выбирать файлы
+                несколько раз. }
               </div>
 
               @if (additionalFiles.length) {
@@ -485,7 +517,8 @@
                   <div class="upload-card-content">
                     <span class="upload-card-name" [title]="file.name">{{ file.name }}</span>
                     <span class="upload-card-meta">
-                      {{ getFileCategoryLabel(file) }} · {{ formatFileSize(file.size) }}
+                      {{ getFileCategoryLabel(file) }} · {{ formatFileSize(file.size) }} @if
+                      (isGroupUploading('additional')) { · Загружается… } @else { · Ожидает повторной отправки }
                     </span>
                   </div>
 
@@ -499,6 +532,7 @@
                     <button
                       class="upload-list-remove"
                       type="button"
+                      [disabled]="isGroupUploading('additional')"
                       [attr.aria-label]="'Удалить файл ' + file.name"
                       (click)="removeFile(additionalFilesField, 'additional', $index)">
                       <span aria-hidden="true">×</span>
@@ -516,31 +550,28 @@
 
             <label class="form-check">
               <input
-                #confirmCorrectField
                 class="form-check-input"
-                [class.form-check-input-invalid]="showValidationErrors && confirmCorrectField.validity.valueMissing"
+                [class.form-check-input-invalid]="isControlInvalid(formControls.confirmCorrect)"
                 id="confirmCorrect"
                 type="checkbox"
-                name="confirmCorrect"
-                [(ngModel)]="form.confirmCorrect"
-                required />
+                formControlName="confirmCorrect" />
               <span>
                 Подтверждаю, что данные введены корректно и соответствуют объекту.
                 <span class="required-mark">*</span>
               </span>
             </label>
+            @if (isControlInvalid(formControls.confirmCorrect)) {
+            <p class="field-error">Подтвердите корректность введённых данных.</p>
+            }
 
             <div class="form-check">
               <input
-                #confirmProcessingField
                 class="form-check-input"
-                [class.form-check-input-invalid]="showValidationErrors && confirmProcessingField.validity.valueMissing"
+                [class.form-check-input-invalid]="isControlInvalid(formControls.confirmProcessing)"
                 id="confirmProcessing"
                 type="checkbox"
-                name="confirmProcessing"
                 aria-label="Согласен(на) на обработку данных для проведения оценки."
-                [(ngModel)]="form.confirmProcessing"
-                required />
+                formControlName="confirmProcessing" />
               <span>
                 <button class="form-check-link" id="confirmProcessingLink" type="button" (click)="openConsentModal()">
                   Согласен(на) на обработку данных для проведения оценки.
@@ -548,14 +579,22 @@
                 <span class="required-mark">*</span>
               </span>
             </div>
+            @if (isControlInvalid(formControls.confirmProcessing)) {
+            <p class="field-error">Подтвердите согласие на обработку данных.</p>
+            }
           </fieldset>
         </div>
 
         <div class="flex flex-wrap gap-4 justify-center mt-6">
-          <button class="btn btn-primary" type="submit" [disabled]="isBusy()">
-            {{ saving() ? 'Сохраняем…' : 'Сохранить параметры' }}
+          <button class="btn btn-outline" type="button" [disabled]="isBusy()" (click)="saveDraftManually()">
+            {{ draftSaving() ? 'Сохраняем черновик…' : 'Сохранить черновик' }}
           </button>
-          <a class="btn btn-outline" href="./requests_table.html">Перейти к заявкам</a>
+          <button class="btn btn-primary" type="submit" [disabled]="isBusy()">
+            {{ saving() ? 'Переходим…' : 'Сохранить и перейти к статусу' }}
+          </button>
+          <a class="btn btn-outline" routerLink="/applicant/assessment/history" queryParamsHandling="preserve">
+            Перейти к заявкам
+          </a>
         </div>
 
         @if (imagePreviewState; as preview) {
