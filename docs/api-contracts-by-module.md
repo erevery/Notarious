@@ -1,88 +1,130 @@
 # Распределение контрактов API по модулям
 
-Источник истины для текущего состояния контрактов:
+Справочник привязки API-сервисов и их методов к разделам продукта. Разделы взяты из [Responsobility.md](Responsobility.md) (таблица «Раздел / страница», «Ключевые функции»). Контракты определены в `libs/shared/api-contracts` (proto-файлы, код генерируется в Connect RPC-совместимые типы и сервисы).
 
-- proto-файлы: `libs/shared/api-contracts/proto/notary/**`
-- экспорт SDK: `libs/shared/api-contracts/src/index.ts`
-- реально поднятые RPC-маршруты: `apps/api/src/app/connect-router.registry.ts`
-
-Для текущего applicant flow формы параметров объекта фронтенд работает напрямую через `AssessmentService` и `DocumentService`. `FormsService` существует только как proto/SDK-контракт и в `apps/api` сейчас не зарегистрирован.
+**Как вызывать эти методы с фронтенда (TypeScript):** см. [frontend-api-contracts-guide.md](frontend-api-contracts-guide.md) (лабораторная по созданию RPC-клиента, типизации, маппингу и обработке ошибок).
 
 ---
 
-## Регистрация / Вход / Восстановление сессии
+## Регистрация / Вход / Восстановление пароля
 
 | API-сервис      | RPC-методы                            |
 | --------------- | ------------------------------------- |
 | **AuthService** | Register, Login, RefreshToken, Logout |
 
-Создание аккаунта, авторизация и обновление сессии.
+Создание аккаунта, авторизация, сброс пароля по email/телефону; регистрация через внешние приложения (VK, Google, Apple, Yandex).
 
 ---
 
-## Личный кабинет заявителя / заявки на оценку
+## Личный кабинет заявителя
 
-| API-сервис            | RPC-методы                                                                                    |
-| --------------------- | --------------------------------------------------------------------------------------------- |
-| **AssessmentService** | CreateAssessment, GetAssessment, UpdateAssessment, ListAssessments, ListCities, ListDistricts |
-| **DocumentService**   | CreateDocument, GetDocument, ListDocumentsByAssessment, DeleteDocument                        |
+| API-сервис            | RPC-методы                                                         |
+| --------------------- | ------------------------------------------------------------------ |
+| **AssessmentService** | CreateAssessment, GetAssessment, UpdateAssessment, ListAssessments |
+| **DocumentService**   | CreateDocument, GetDocument, ListDocuments, DeleteDocument         |
+| **FormsService**      | SaveAssessmentForm, SaveDocumentForm                               |
 
-Создание и продолжение черновика заявки, загрузка файлов заявки, восстановление последнего draft, lookup-справочники городов и районов.
+Подача заявки, просмотр статуса, список заявок, загрузка/замена документов, комментарии/заметки.
 
 ---
 
 ## Личный кабинет нотариуса
 
-| API-сервис            | RPC-методы                                                                                               |
-| --------------------- | -------------------------------------------------------------------------------------------------------- |
-| **AssessmentService** | ListAssessments, GetAssessment, UpdateAssessment, VerifyAssessment, CompleteAssessment, CancelAssessment |
-| **DocumentService**   | GetDocument, ListDocumentsByAssessment, DeleteDocument                                                   |
-| **PaymentService**    | GetPaymentHistory, GetSubscription, CreateSubscription                                                   |
-| **ReportService**     | CreateReport, GetReport, ListReports, SignReport, DeleteReport                                           |
+| API-сервис            | RPC-методы                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| **AssessmentService** | ListAssessments, GetAssessment, VerifyAssessment, CompleteAssessment, CancelAssessment |
+| **PaymentService**    | GetPaymentHistory, GetSubscription, CreateSubscription                                 |
+| **DocumentService**   | CreateDocument, GetDocument, ListDocuments, DeleteDocument                             |
+| **UserService**       | GetProfile, UpdateProfile                                                              |
 
-Просмотр заявок, работа со статусами, доступ к прикреплённым документам и отчётам.
+Просмотр заказов, фильтры/поиск, «взять в работу», управление статусами, оплата подписки, документы по заказу.
 
 ---
 
 ## Личный кабинет администратора
 
-| API-сервис              | RPC-методы                                                                                               |
-| ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| **UserService**         | GetProfile, UpdateProfile, GetUserById, ListUsers                                                        |
-| **AssessmentService**   | ListAssessments, GetAssessment, UpdateAssessment, VerifyAssessment, CompleteAssessment, CancelAssessment |
-| **DocumentService**     | CreateDocument, GetDocument, ListDocumentsByAssessment, DeleteDocument                                   |
-| **PaymentService**      | CreatePayment, GetPaymentHistory, GetSubscription, CreateSubscription                                    |
-| **NotificationService** | ListNotifications, MarkAsRead, MarkAllAsRead, DeleteNotification                                         |
-| **ReportService**       | CreateReport, GetReport, ListReports, SignReport, DeleteReport                                           |
+Общее, просмотр заказов, «взять в работу», управление статусами, оплата подписки, документы по заказу.
 
-Админ работает только с теми сервисами, которые реально зарегистрированы в Connect-router приложения API.
+| API-сервис            | RPC-методы                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| **AssessmentService** | ListAssessments, GetAssessment, VerifyAssessment, CompleteAssessment, CancelAssessment |
+| **PaymentService**    | GetPaymentHistory, GetSubscription, CreateSubscription                                 |
+| **DocumentService**   | CreateDocument, GetDocument, ListDocuments, DeleteDocument                             |
+| **UserService**       | GetProfile, UpdateProfile                                                              |
 
 ---
 
-## Форма параметров объекта и draft flow оценки
+## Личный кабинет администратора / управление тарифными планами
 
-| API-сервис            | RPC-методы                                                                                    |
-| --------------------- | --------------------------------------------------------------------------------------------- |
-| **AssessmentService** | CreateAssessment, GetAssessment, UpdateAssessment, ListAssessments, ListCities, ListDistricts |
-| **DocumentService**   | CreateDocument, ListDocumentsByAssessment                                                     |
+| API-сервис       | RPC-методы                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| **PromoService** | ListPromos, CreatePromo, GetPromo, GetPromoByCode, UpdatePromo, DeletePromo, ValidatePromo |
 
-Текущий flow формы:
-
-- `ListAssessments(statusFilter=NEW, limit=1)` — найти последний draft пользователя
-- `GetAssessment` — открыть draft по `assessmentId` из query params
-- `CreateAssessment` / `UpdateAssessment` — сохранить draft и параметры `RealEstateObject`
-- `ListCities` / `ListDistricts` — lookup-справочники
-- `CreateDocument` / `ListDocumentsByAssessment` — файлы заявки, привязанные к `assessmentId`
+Просмотр списка тарифных планов, скидок, промокодов. _PromoService в proto есть, в пакет пока не экспортирован._
 
 ---
 
-## Загрузка и управление файлами заявки
+## Личный кабинет администратора / управление рассылкой
 
-| API-сервис          | RPC-методы                                                             |
-| ------------------- | ---------------------------------------------------------------------- |
-| **DocumentService** | CreateDocument, GetDocument, ListDocumentsByAssessment, DeleteDocument |
+| API-сервис              | RPC-методы                                                       |
+| ----------------------- | ---------------------------------------------------------------- |
+| **NotificationService** | ListNotifications, MarkAsRead, MarkAllAsRead, DeleteNotification |
 
-Документный flow привязан к заявке через `assessmentId`. В текущем applicant flow фото объекта и общие документы загружаются как записи `Document`, а не как вложения `RealEstateObject`.
+Просмотр списка рассылки, формирование рассылки email. _NotificationService в proto есть, в пакет пока не экспортирован._
+
+---
+
+## Личный кабинет администратора / пользователи и заказы
+
+| API-сервис            | RPC-методы                                                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| **UserService**       | ListUsers, GetUserById, DeactivateUser, ActivateUser, ChangeUserRole                                     |
+| **AssessmentService** | ListAssessments, GetAssessment, UpdateAssessment, VerifyAssessment, CompleteAssessment, CancelAssessment |
+| **DocumentService**   | ListDocuments, GetDocument, CreateDocument, DeleteDocument                                               |
+
+CRUD пользователей, роли/права, блокировки, управление заказами/статусами, ручные корректировки, модерация файлов.
+
+---
+
+## Личный кабинет администратора / География объектов оценки
+
+| API-сервис            | RPC-методы                     |
+| --------------------- | ------------------------------ |
+| **AssessmentService** | ListAssessments, GetAssessment |
+
+Карта объектов (Leaflet), маркеры по заявкам/адресам, фильтры по статусу и периоду, переход к карточке заявки.
+
+---
+
+## Личный кабинет администратора / Платежи
+
+| API-сервис         | RPC-методы                                                            |
+| ------------------ | --------------------------------------------------------------------- |
+| **PaymentService** | GetPaymentHistory, GetSubscription, CreateSubscription, CreatePayment |
+
+Просмотр списка платежей/транзакций, формы создания/редактирования/просмотра/удаления платежа.
+
+---
+
+## Форма подачи заявки на оценку наследственного имущества
+
+| API-сервис            | RPC-методы                           |
+| --------------------- | ------------------------------------ |
+| **AssessmentService** | CreateAssessment                     |
+| **DocumentService**   | CreateDocument, ListDocuments        |
+| **FormsService**      | SaveAssessmentForm, SaveDocumentForm |
+
+Ввод данных наследства/объекта, выбор типа имущества, прикрепление документов, согласия/чекбоксы, отправка.
+
+---
+
+## Загрузка и управление файлами (PDF/изображения) с предпросмотром
+
+| API-сервис          | RPC-методы                                                 |
+| ------------------- | ---------------------------------------------------------- |
+| **DocumentService** | CreateDocument, GetDocument, ListDocuments, DeleteDocument |
+
+Drag&Drop, валидация форматов/размера, предпросмотр, переименование, удаление, версии, теги, статусы «принято/на проверке».
 
 ---
 
@@ -90,10 +132,10 @@
 
 | API-сервис            | RPC-методы                                                     |
 | --------------------- | -------------------------------------------------------------- |
-| **AssessmentService** | GetAssessment, ListAssessments                                 |
 | **ReportService**     | CreateReport, GetReport, ListReports, SignReport, DeleteReport |
+| **AssessmentService** | GetAssessment, ListAssessments                                 |
 
-Карточка результата опирается на статус `Assessment` и связанные `AssessmentReport`.
+Карточка результата, отчёты/файлы, детализация расчёта, скачивание копий (PDF). _ReportService в proto есть, в пакет пока не экспортирован._
 
 ---
 
@@ -102,50 +144,104 @@
 | API-сервис         | RPC-методы                                                            |
 | ------------------ | --------------------------------------------------------------------- |
 | **PaymentService** | CreatePayment, GetPaymentHistory, GetSubscription, CreateSubscription |
+| **PromoService**   | GetPromoByCode, ValidatePromo                                         |
 
-История платежей и checkout работают через `PaymentService`.
+Выбор тарифа, ввод реквизитов, промокод (опц.), подтверждение оплаты, чеки/счета, история платежей.
 
 ---
 
-## Уведомления
+## Уведомления + история
 
 | API-сервис              | RPC-методы                                                       |
 | ----------------------- | ---------------------------------------------------------------- |
 | **NotificationService** | ListNotifications, MarkAsRead, MarkAllAsRead, DeleteNotification |
 
-In-app уведомления и состояние прочитанности.
+In-app уведомления, фильтры, прочитано/не прочитано, история событий, настройки каналов (email/push). _NotificationService в proto есть, в пакет пока не экспортирован._
 
 ---
 
-## Разделы без текущих контрактов
+## Запрос, оплата и получение копий нотариальных документов
 
-В репозитории сейчас нет отдельных proto-контрактов и поднятых RPC-маршрутов для следующих направлений:
+| API-сервис          | RPC-методы                                             |
+| ------------------- | ------------------------------------------------------ |
+| **SaleService**     | CreateSale, GetSale, ListSales, UpdateSale, DeleteSale |
+| **PaymentService**  | CreatePayment, GetPaymentHistory                       |
+| **DocumentService** | CreateDocument, GetDocument, ListDocuments             |
 
-- тарифные планы / promo management
-- sale / выдача копий документов
-- audit log API
-- чат поддержки
-- справочный раздел / knowledge base
-
-Если эти модули будут реализованы, их нужно добавить одновременно в три места:
-
-1. `libs/shared/api-contracts/proto/notary/**`
-2. `libs/shared/api-contracts/src/index.ts`
-3. `apps/api/src/app/connect-router.registry.ts`
+Форма запроса, прикрепление оснований, расчёт стоимости, оплата, выдача копий/ссылок, статус «в обработке/готово». _SaleService в proto есть, в пакет пока не экспортирован._
 
 ---
 
-## Сводка по доступным сервисам
+## Чат поддержки
 
-| Сервис              | Proto-файл                               | Экспорт в `@notary-portal/api-contracts` | Зарегистрирован в `apps/api` |
-| ------------------- | ---------------------------------------- | ---------------------------------------- | ---------------------------- |
-| AssessmentService   | assessment/v1alpha1/assessment.proto     | Да                                       | Да                           |
-| AuthService         | auth/v1alpha1/auth.proto                 | Да                                       | Да                           |
-| DocumentService     | document/v1alpha1/document.proto         | Да                                       | Да                           |
-| FormsService        | forms/v1alpha1/forms.proto               | Да                                       | Нет                          |
-| NotificationService | notification/v1alpha1/notification.proto | Да                                       | Да                           |
-| PaymentService      | payment/v1alpha1/payment.proto           | Да                                       | Да                           |
-| ReportService       | report/v1alpha1/report.proto             | Да                                       | Да                           |
-| UserService         | user/v1alpha1/user.proto                 | Да                                       | Да                           |
+Контракты в текущем репозитории не определены — **TBD** (отдельный сервис или расширение api-contracts).
 
-Отдельных proto-файлов для `PromoService`, `SaleService` и `AuditLogService` в текущем дереве `libs/shared/api-contracts/proto/notary` нет.
+Чат/тикеты, вложения, SLA-статусы, база знаний/FAQ, поиск по статьям.
+
+---
+
+## Справочный раздел
+
+Контракты в api-contracts не определены — **TBD**.
+
+База знаний/FAQ, поиск по статьям (фильтры по автору и логике поиска).
+
+---
+
+## История действий и логирование (через интерфейс)
+
+| API-сервис          | RPC-методы                 |
+| ------------------- | -------------------------- |
+| **AuditLogService** | ListAuditLogs, GetAuditLog |
+
+Аудит действий (кто/что/когда), фильтры, экспорт, просмотр логов по пользователю/заказу, события безопасности. _AuditLogService в proto есть, в пакет пока не экспортирован._
+
+---
+
+## UI: модуль оценки недвижимости (все подразделы)
+
+Объединение подразделов: загрузка фото и документов, запрос оценки с параметрами, ввод параметров объекта, результаты и отчёты, история заказов и статусов.
+
+| API-сервис            | RPC-методы                                                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **AssessmentService** | CreateAssessment, GetAssessment, UpdateAssessment, ListAssessments, VerifyAssessment, CompleteAssessment, CancelAssessment |
+| **DocumentService**   | CreateDocument, GetDocument, ListDocuments, DeleteDocument                                                                 |
+| **FormsService**      | SaveAssessmentForm, SaveDocumentForm                                                                                       |
+| **ReportService**     | CreateReport, GetReport, ListReports, SignReport, DeleteReport                                                             |
+
+---
+
+## UI: админ-панель модуля — управление заказами и аналитика
+
+| API-сервис            | RPC-методы                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| **AssessmentService** | ListAssessments, GetAssessment, VerifyAssessment, CompleteAssessment, CancelAssessment |
+| **ReportService**     | ListReports, GetReport                                                                 |
+
+Очередь оценок, ручная модерация, метрики (конверсия/время), отчёты, выгрузки.
+
+---
+
+## Landing page
+
+Специфичных контрактов API для гостевой продажной страницы нет.
+
+---
+
+## Сводка: сервисы, proto и экспорт в пакете
+
+| Сервис              | Proto-файл                               | Экспорт в `@notary-portal/api-contracts` |
+| ------------------- | ---------------------------------------- | ---------------------------------------- |
+| AssessmentService   | assessment/v1alpha1/assessment.proto     | Да                                       |
+| AuthService         | auth/v1alpha1/auth.proto                 | Да                                       |
+| DocumentService     | document/v1alpha1/document.proto         | Да                                       |
+| FormsService        | forms/v1alpha1/forms.proto               | Да                                       |
+| PaymentService      | payment/v1alpha1/payment.proto           | Да                                       |
+| UserService         | user/v1alpha1/user.proto                 | Да                                       |
+| ReportService       | report/v1alpha1/report.proto             | **Нет**                                  |
+| NotificationService | notification/v1alpha1/notification.proto | **Нет**                                  |
+| AuditLogService     | audit/v1alpha1/audit.proto               | **Нет**                                  |
+| PromoService        | promo/v1alpha1/promo.proto               | **Нет**                                  |
+| SaleService         | sale/v1alpha1/sale.proto                 | **Нет**                                  |
+
+Пакет экспортирует только модули, перечисленные в [libs/shared/api-contracts/src/index.ts](../libs/shared/api-contracts/src/index.ts). Сервисы Report, Notification, Audit, Promo, Sale описаны в proto и при появлении соответствующих маршрутов на бэкенде их нужно добавить в `index.ts` и зарегистрировать в Connect-router приложения API ([apps/api/src/app/connect-router.registry.ts](../apps/api/src/app/connect-router.registry.ts)).
