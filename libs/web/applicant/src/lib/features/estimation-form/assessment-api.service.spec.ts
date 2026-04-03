@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { createClient } from '@connectrpc/connect';
 import {
   AssessmentStatus,
@@ -79,6 +80,7 @@ describe('AssessmentApiService', () => {
     expect(draft).toEqual({
       id: 'assessment-1',
       status: AssessmentStatus.NEW,
+      updatedAt: '2026-04-03T10:00:00.000Z',
       form: {
         cityId: 'city-1',
         districtId: 'district-1',
@@ -102,17 +104,18 @@ describe('AssessmentApiService', () => {
     });
   });
 
-  it('should request the latest NEW draft and fallback to assessment description when object description is empty', async () => {
+  it('should load the latest unfinished assessment for the applicant', async () => {
     client.listAssessments.mockResolvedValue({
       assessments: [
         createAssessmentMessage({
-          description: 'Описание из assessment',
+          id: 'assessment-7',
+          address: 'Екатеринбург, ул. Малышева, д. 16',
+          updatedAt: timestampFromDate(new Date('2026-04-03T10:20:00.000Z')),
           realEstateObject: {
-            cityId: 'city-2',
+            cityId: 'city-1',
             address: 'Екатеринбург, ул. Малышева, д. 16',
             area: '71.2',
-            objectType: RealEstateObjectType.HOUSE,
-            description: '   ',
+            objectType: RealEstateObjectType.LAND_PLOT,
           },
         }),
       ],
@@ -128,16 +131,31 @@ describe('AssessmentApiService', () => {
         limit: 1,
       },
     });
-    expect(draft).toEqual(
-      expect.objectContaining({
-        id: 'assessment-1',
-        form: expect.objectContaining({
-          cityId: 'city-2',
-          address: 'Екатеринбург, ул. Малышева, д. 16',
-          description: 'Описание из assessment',
-        }),
-      }),
-    );
+    expect(draft).toEqual({
+      id: 'assessment-7',
+      status: AssessmentStatus.NEW,
+      updatedAt: '2026-04-03T10:20:00.000Z',
+      form: {
+        cityId: 'city-1',
+        districtId: '',
+        address: 'Екатеринбург, ул. Малышева, д. 16',
+        cadastralNumber: '',
+        area: '71.2',
+        objectType: String(RealEstateObjectType.LAND_PLOT),
+        rooms: '',
+        floorsTotal: '',
+        floor: '',
+        condition: '',
+        yearBuilt: '',
+        wallMaterial: '',
+        elevatorType: '',
+        hasBalconyOrLoggia: false,
+        landCategory: '',
+        permittedUse: '',
+        utilities: '',
+        description: '',
+      },
+    });
   });
 
   it('should normalize object params before creating a draft', async () => {
@@ -218,6 +236,7 @@ function createAssessmentMessage(overrides: Record<string, unknown> = {}) {
     status: AssessmentStatus.NEW,
     address: 'Москва, Тверская ул., д. 10',
     description: '',
+    updatedAt: timestampFromDate(new Date('2026-04-03T10:00:00.000Z')),
     ...overrides,
   };
 }

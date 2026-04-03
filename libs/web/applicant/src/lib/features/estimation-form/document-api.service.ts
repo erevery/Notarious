@@ -2,7 +2,7 @@ import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { createClient } from '@connectrpc/connect';
 import { DocumentService, DocumentType, type Document } from '@notary-portal/api-contracts';
 import { Injectable, inject } from '@angular/core';
-import { RPC_TRANSPORT } from '@notary-portal/ui';
+import { RPC_TRANSPORT, buildRpcBaseUrl } from '@notary-portal/ui';
 import type { AssessmentDocumentModel } from './estimation-form.models';
 
 export type UploadGroup = 'documents' | 'photos' | 'additional';
@@ -45,14 +45,23 @@ export class DocumentApiService {
     return this.toDocumentModel(response.document);
   }
 
+  async deleteDocument(documentId: string): Promise<void> {
+    await this.client.deleteDocument({ id: documentId });
+  }
+
   private toDocumentModel(document: Document): AssessmentDocumentModel {
+    const resolvedFileUrl = resolveStoredDocumentUrl(document.filePath);
+
     return {
       id: document.id,
       fileName: document.fileName,
       fileType: document.fileType,
+      filePath: document.filePath,
+      previewUrl: resolvedFileUrl,
+      downloadUrl: resolvedFileUrl,
       version: document.version,
       uploadedAt: document.uploadedAt ? timestampDate(document.uploadedAt).toISOString() : null,
-      kind: document.documentType === DocumentType.PHOTO ? 'photo' : 'document',
+      kind: resolveStoredDocumentKind(document.documentType),
     };
   }
 }
@@ -62,5 +71,38 @@ function resolveDocumentType(group: UploadGroup): DocumentType {
     return DocumentType.PHOTO;
   }
 
+  if (group === 'additional') {
+    return DocumentType.ADDITIONAL;
+  }
+
   return DocumentType.OTHER;
+}
+
+function resolveStoredDocumentKind(documentType: DocumentType): AssessmentDocumentModel['kind'] {
+  if (documentType === DocumentType.PHOTO) {
+    return 'photo';
+  }
+
+  if (documentType === DocumentType.ADDITIONAL) {
+    return 'additional';
+  }
+
+  return 'document';
+}
+
+function resolveStoredDocumentUrl(filePath: string): string {
+  const normalizedPath = filePath.trim();
+  if (!normalizedPath) {
+    return '';
+  }
+
+  try {
+    return new URL(normalizedPath, ensureTrailingSlash(buildRpcBaseUrl())).toString();
+  } catch {
+    return normalizedPath;
+  }
+}
+
+function ensureTrailingSlash(url: string): string {
+  return url.endsWith('/') ? url : `${url}/`;
 }

@@ -18,6 +18,8 @@ export function toPrismaDocumentType(
       return PrismaDocumentType.Photo;
     case RpcDocumentType.OTHER:
       return PrismaDocumentType.Other;
+    case RpcDocumentType.ADDITIONAL:
+      return PrismaDocumentType.Additional;
     case RpcDocumentType.UNSPECIFIED:
     default:
       return fallback;
@@ -36,6 +38,8 @@ export function fromPrismaDocumentType(value: PrismaDocumentType): RpcDocumentTy
       return RpcDocumentType.CADASTRAL_PASSPORT;
     case PrismaDocumentType.Photo:
       return RpcDocumentType.PHOTO;
+    case PrismaDocumentType.Additional:
+      return RpcDocumentType.ADDITIONAL;
     case PrismaDocumentType.Other:
     default:
       return RpcDocumentType.OTHER;

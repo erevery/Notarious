@@ -1,9 +1,15 @@
 <div class="app-estimation-form-page">
   <main class="container page">
     <section class="card">
-      <header class="card-header">
+      <header class="card-header estimation-form-header">
         <h1>Заявка на оценку</h1>
         <p class="card-subtitle m-0">Заполните характеристики недвижимости для формирования заявки на оценку.</p>
+        <p
+          class="estimation-form-status"
+          [class.estimation-form-status-progress]="autosaveStatus().tone === 'progress'"
+          [class.estimation-form-status-saved]="autosaveStatus().tone === 'saved'">
+          {{ autosaveStatus().message }}
+        </p>
       </header>
 
       @if (loadError()) {
@@ -13,8 +19,6 @@
       } @if (validationErrorMessage) {
       <p class="form-banner form-banner-error">{{ validationErrorMessage }}</p>
       }
-      <p class="form-banner form-banner-info">{{ draftStatusMessage() }}</p>
-
       <form
         #valuationForm
         class="form"
@@ -91,7 +95,9 @@
                   formControlName="cadastralNumber"
                   maxlength="64"
                   placeholder="Например: 66:41:0101021:37" />
-                <div class="form-help">Опционально. Поле тоже сохраняется и восстанавливается из draft.</div>
+                <div class="form-help">
+                  Опционально. Поле автоматически сохраняется и восстанавливается при возврате.
+                </div>
               </div>
             </div>
           </fieldset>
@@ -330,7 +336,7 @@
                   [class.form-input-invalid]="showValidationErrors && isRequiredUploadMissing('documents')"
                   (change)="onFilesSelected($event, 'documents')" />
                 <div class="form-help">
-                  @if (!hasAssessmentId()) { Загрузка станет доступна после появления серверного черновика. } @else {
+                  @if (!hasAssessmentId()) { Загрузка станет доступна после автоматического создания заявки. } @else {
                   Поддерживаются PDF, DOC/DOCX и сканы/изображения (JPG, PNG, HEIC). Файлы можно добавлять в несколько
                   подходов. }
                 </div>
@@ -343,11 +349,49 @@
                 </div>
                 <ul class="upload-card-list">
                   @for (document of uploadedDocumentItems(); track document.id) {
-                  <li class="upload-card upload-card-readonly">
-                    <div class="upload-card-icon" aria-hidden="true">DOC</div>
+                  <li class="upload-card">
+                    @if (isStoredImage(document)) {
+                    <button
+                      class="upload-card-preview"
+                      type="button"
+                      [attr.aria-label]="'Открыть превью файла ' + document.fileName"
+                      (click)="previewStoredDocument(document)">
+                      <img
+                        class="upload-card-preview-image"
+                        [src]="getStoredDocumentSource(document)"
+                        [alt]="document.fileName" />
+                    </button>
+                    } @else {
+                    <div class="upload-card-icon" aria-hidden="true">{{ getStoredDocumentIcon(document) }}</div>
+                    }
                     <div class="upload-card-content">
                       <span class="upload-card-name" [title]="document.fileName">{{ document.fileName }}</span>
-                      <span class="upload-card-meta">{{ formatStoredDocumentMeta(document) }}</span>
+                      <span class="upload-card-meta">
+                        {{ formatStoredDocumentMeta(document) }} @if (isStoredDocumentDeleting(document.id)) { ·
+                        Удаляем… }
+                      </span>
+                    </div>
+                    <div class="upload-card-actions">
+                      @if (canPreviewStoredDocument(document)) {
+                      <button class="btn btn-ghost btn-sm" type="button" (click)="previewStoredDocument(document)">
+                        Просмотреть
+                      </button>
+                      } @else if (canOpenStoredDocument(document)) {
+                      <button class="btn btn-ghost btn-sm" type="button" (click)="openStoredDocument(document)">
+                        Открыть
+                      </button>
+                      }
+                      <button class="btn btn-outline btn-sm" type="button" (click)="downloadStoredDocument(document)">
+                        Скачать
+                      </button>
+                      <button
+                        class="upload-list-remove"
+                        type="button"
+                        [disabled]="isGroupUploading('documents') || isStoredDocumentDeleting(document.id)"
+                        [attr.aria-label]="'Удалить сохранённый файл ' + document.fileName"
+                        (click)="removeStoredDocument(document)">
+                        <span aria-hidden="true">×</span>
+                      </button>
                     </div>
                   </li>
                   }
@@ -376,7 +420,7 @@
                       <span class="upload-card-name" [title]="file.name">{{ file.name }}</span>
                       <span class="upload-card-meta">
                         {{ getFileCategoryLabel(file) }} · {{ formatFileSize(file.size) }} @if
-                        (isGroupUploading('documents')) { · Загружается… } @else { · Ожидает повторной отправки }
+                        (isGroupUploading('documents')) { · Загружается… } @else { · Ожидает отправки }
                       </span>
                     </div>
 
@@ -417,8 +461,8 @@
                   [class.form-input-invalid]="showValidationErrors && isRequiredUploadMissing('photos')"
                   (change)="onFilesSelected($event, 'photos')" />
                 <div class="form-help">
-                  @if (!hasAssessmentId()) { Фото можно будет прикрепить после сохранения server draft. } @else {
-                  Добавьте фото фасада, комнат и состояния объекта. Новые файлы добавляются к уже выбранным. }
+                  @if (!hasAssessmentId()) { Фото можно будет прикрепить после автоматического создания заявки. } @else
+                  { Добавьте фото фасада, комнат и состояния объекта. Новые файлы добавляются к уже выбранным. }
                 </div>
                 @if (showValidationErrors && isRequiredUploadMissing('photos')) {
                 <p class="field-error">Загрузите хотя бы одно фото объекта.</p>
@@ -427,13 +471,43 @@
                   <span class="upload-summary-badge">{{ uploadedPhotoItems().length }}</span>
                   <span class="upload-summary-text"> Уже сохранено в заявке </span>
                 </div>
-                <ul class="upload-card-list">
+                <ul class="photo-grid" role="list">
                   @for (document of uploadedPhotoItems(); track document.id) {
-                  <li class="upload-card upload-card-readonly">
-                    <div class="upload-card-icon" aria-hidden="true">IMG</div>
-                    <div class="upload-card-content">
-                      <span class="upload-card-name" [title]="document.fileName">{{ document.fileName }}</span>
-                      <span class="upload-card-meta">{{ formatStoredDocumentMeta(document) }}</span>
+                  <li class="photo-card">
+                    <button
+                      class="photo-card-remove"
+                      type="button"
+                      [disabled]="isGroupUploading('photos') || isStoredDocumentDeleting(document.id)"
+                      [attr.aria-label]="'Удалить сохранённый файл ' + document.fileName"
+                      (click)="removeStoredDocument(document)">
+                      <span aria-hidden="true">×</span>
+                    </button>
+
+                    <button
+                      class="photo-card-preview"
+                      type="button"
+                      [attr.aria-label]="'Открыть фото ' + document.fileName"
+                      (click)="previewStoredDocument(document)">
+                      <img
+                        class="photo-card-image"
+                        [src]="getStoredDocumentSource(document)"
+                        [alt]="document.fileName" />
+                    </button>
+
+                    <div class="photo-card-caption">
+                      <span class="photo-card-name" [title]="document.fileName">{{ document.fileName }}</span>
+                      <span class="photo-card-meta">
+                        {{ formatStoredDocumentMeta(document) }} @if (isStoredDocumentDeleting(document.id)) { ·
+                        Удаляем… }
+                      </span>
+                      <div class="photo-card-actions">
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="previewStoredDocument(document)">
+                          Просмотреть
+                        </button>
+                        <button class="btn btn-outline btn-sm" type="button" (click)="downloadStoredDocument(document)">
+                          Скачать
+                        </button>
+                      </div>
                     </div>
                   </li>
                   }
@@ -467,8 +541,16 @@
                       <span class="photo-card-name" [title]="file.name">{{ file.name }}</span>
                       <span class="photo-card-meta">
                         {{ formatFileSize(file.size) }} @if (isGroupUploading('photos')) { · Загружается… } @else { ·
-                        Ожидает повторной отправки }
+                        Ожидает отправки }
                       </span>
+                      <div class="photo-card-actions">
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="previewFile(file)">
+                          Просмотреть
+                        </button>
+                        <button class="btn btn-outline btn-sm" type="button" (click)="downloadFile(file)">
+                          Скачать
+                        </button>
+                      </div>
                     </div>
                   </li>
                   }
@@ -489,12 +571,66 @@
                 [disabled]="!canUploadFiles() || isGroupUploading('additional')"
                 (change)="onFilesSelected($event, 'additional')" />
               <div class="form-help">
-                @if (!hasAssessmentId()) { Дополнительные файлы станут доступны после создания черновика на сервере. }
+                @if (!hasAssessmentId()) { Дополнительные файлы станут доступны после автоматического создания заявки. }
                 @else { При необходимости добавьте доп. справки, планы или иные материалы. Можно выбирать файлы
                 несколько раз. }
               </div>
 
-              @if (additionalFiles.length) {
+              @if (hasStoredDocuments('additional')) {
+              <div class="upload-summary upload-summary-server">
+                <span class="upload-summary-badge">{{ uploadedAdditionalItems().length }}</span>
+                <span class="upload-summary-text"> Уже сохранено в заявке </span>
+              </div>
+              <ul class="upload-card-list">
+                @for (document of uploadedAdditionalItems(); track document.id) {
+                <li class="upload-card">
+                  @if (isStoredImage(document)) {
+                  <button
+                    class="upload-card-preview"
+                    type="button"
+                    [attr.aria-label]="'Открыть превью файла ' + document.fileName"
+                    (click)="previewStoredDocument(document)">
+                    <img
+                      class="upload-card-preview-image"
+                      [src]="getStoredDocumentSource(document)"
+                      [alt]="document.fileName" />
+                  </button>
+                  } @else {
+                  <div class="upload-card-icon" aria-hidden="true">{{ getStoredDocumentIcon(document) }}</div>
+                  }
+                  <div class="upload-card-content">
+                    <span class="upload-card-name" [title]="document.fileName">{{ document.fileName }}</span>
+                    <span class="upload-card-meta">
+                      {{ formatStoredDocumentMeta(document) }} @if (isStoredDocumentDeleting(document.id)) { · Удаляем…
+                      }
+                    </span>
+                  </div>
+                  <div class="upload-card-actions">
+                    @if (canPreviewStoredDocument(document)) {
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="previewStoredDocument(document)">
+                      Просмотреть
+                    </button>
+                    } @else if (canOpenStoredDocument(document)) {
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="openStoredDocument(document)">
+                      Открыть
+                    </button>
+                    }
+                    <button class="btn btn-outline btn-sm" type="button" (click)="downloadStoredDocument(document)">
+                      Скачать
+                    </button>
+                    <button
+                      class="upload-list-remove"
+                      type="button"
+                      [disabled]="isGroupUploading('additional') || isStoredDocumentDeleting(document.id)"
+                      [attr.aria-label]="'Удалить сохранённый файл ' + document.fileName"
+                      (click)="removeStoredDocument(document)">
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </div>
+                </li>
+                }
+              </ul>
+              } @if (additionalFiles.length) {
               <div class="upload-summary">
                 <span class="upload-summary-badge">{{ additionalFiles.length }}</span>
                 <span class="upload-summary-text"> Добавлено {{ formatFileCount(additionalFiles.length) }} </span>
@@ -518,7 +654,7 @@
                     <span class="upload-card-name" [title]="file.name">{{ file.name }}</span>
                     <span class="upload-card-meta">
                       {{ getFileCategoryLabel(file) }} · {{ formatFileSize(file.size) }} @if
-                      (isGroupUploading('additional')) { · Загружается… } @else { · Ожидает повторной отправки }
+                      (isGroupUploading('additional')) { · Загружается… } @else { · Ожидает отправки }
                     </span>
                   </div>
 
@@ -585,10 +721,7 @@
           </fieldset>
         </div>
 
-        <div class="flex flex-wrap gap-4 justify-center mt-6">
-          <button class="btn btn-outline" type="button" [disabled]="isBusy()" (click)="saveDraftManually()">
-            {{ draftSaving() ? 'Сохраняем черновик…' : 'Сохранить черновик' }}
-          </button>
+        <div class="form-actions-bar">
           <button class="btn btn-primary" type="submit" [disabled]="isBusy()">
             {{ saving() ? 'Переходим…' : 'Сохранить и перейти к статусу' }}
           </button>
@@ -616,7 +749,7 @@
             <button class="lightbox-close" type="button" aria-label="Закрыть просмотр" (click)="closeImagePreview()">
               ×
             </button>
-            <img class="lightbox-image" [src]="preview.objectUrl" [alt]="preview.fileName" />
+            <img class="lightbox-image" [src]="preview.previewUrl" [alt]="preview.fileName" />
             <p class="lightbox-caption">{{ preview.fileName }}</p>
           </div>
         </div>

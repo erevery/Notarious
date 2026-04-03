@@ -21,6 +21,45 @@
   background: var(--bg-secondary);
 }
 
+.estimation-form-header {
+  display: grid;
+  gap: 0.8rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.estimation-form-header h1 {
+  margin: 0;
+}
+
+.estimation-form-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 2.5rem;
+  margin: 0;
+  padding: 0.65rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+
+  background: #fff;
+}
+
+.estimation-form-status-progress {
+  color: var(--text-main);
+  background: var(--bg-secondary);
+}
+
+.estimation-form-status-saved {
+  color: #166534;
+  background: #f0fdf4;
+}
+
 .fieldset {
   margin: 0;
   padding: 1.25rem;
@@ -256,10 +295,6 @@
   border-radius: var(--radius-sm);
 }
 
-.upload-card-readonly {
-  grid-template-columns: auto minmax(0, 1fr);
-}
-
 .upload-card-preview,
 .upload-card-icon {
   width: 72px;
@@ -387,6 +422,13 @@
   line-height: 1.25;
 }
 
+.photo-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .upload-card-preview,
 .photo-card-preview,
 .photo-card-remove,
@@ -486,6 +528,16 @@
   border-color: var(--primary);
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+.form-actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+
+  margin-top: 1.5rem;
 }
 
 .lightbox {
@@ -589,6 +641,10 @@
 
   .photo-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .form-actions-bar {
+    flex-direction: column;
   }
 
   .lightbox {

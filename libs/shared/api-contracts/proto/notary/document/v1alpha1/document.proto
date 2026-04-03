@@ -20,6 +20,7 @@ enum DocumentType {
   DOCUMENT_TYPE_CADASTRAL_PASSPORT = 4;
   DOCUMENT_TYPE_PHOTO = 5;
   DOCUMENT_TYPE_OTHER = 6;
+  DOCUMENT_TYPE_ADDITIONAL = 7;
 }
 
 message DocumentFilters {

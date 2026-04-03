@@ -55,7 +55,8 @@
       },
       "configurations": {
         "development": {
-          "buildTarget": "api:build:development"
+          "buildTarget": "api:build:development",
+          "runtimeArgs": ["--env-file=.env"]
         },
         "production": {
           "buildTarget": "api:build:production"

@@ -49,6 +49,7 @@ export interface EstimationFormValue extends EstimationFormDraftData {
 export interface AssessmentDraftModel {
   id: string;
   status: AssessmentStatus;
+  updatedAt: string | null;
   form: EstimationFormDraftData;
 }
 
@@ -56,9 +57,12 @@ export interface AssessmentDocumentModel {
   id: string;
   fileName: string;
   fileType: string;
+  filePath: string;
+  previewUrl: string;
+  downloadUrl: string;
   version: number;
   uploadedAt: string | null;
-  kind: 'document' | 'photo';
+  kind: 'document' | 'photo' | 'additional';
 }
 
 export const INITIAL_ESTIMATION_FORM_VALUE: EstimationFormValue = {

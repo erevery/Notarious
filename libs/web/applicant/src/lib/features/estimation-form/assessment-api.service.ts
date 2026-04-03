@@ -6,6 +6,7 @@ import {
   type RealEstateObject,
 } from '@notary-portal/api-contracts';
 import { Injectable, inject } from '@angular/core';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { RPC_TRANSPORT } from '@notary-portal/ui';
 import type {
   AssessmentDraftModel,
@@ -96,6 +97,7 @@ export class AssessmentApiService {
     return {
       id: assessment.id,
       status: assessment.status,
+      updatedAt: assessment.updatedAt ? timestampDate(assessment.updatedAt).toISOString() : null,
       form: {
         cityId: realEstateObject?.cityId ?? '',
         districtId: realEstateObject?.districtId ?? '',
