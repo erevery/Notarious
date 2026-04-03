@@ -225,6 +225,29 @@ describe('EstimationForm', () => {
     expect(component.formControls.utilities.value).toBe('электричество');
   });
 
+  it('should persist local fallback draft while the user edits the form before server save', async () => {
+    await createComponent();
+    fillCoreFields(component);
+    await waitForMs(200);
+    await settleFixture(fixture);
+
+    expect(localDraftService.save).toHaveBeenCalledWith(
+      USER_ID,
+      expect.objectContaining({
+        assessmentId: null,
+        form: expect.objectContaining({
+          cityId: CITY_ID,
+          districtId: DISTRICT_ID,
+          address: 'Москва, Тверская ул., д. 10',
+          cadastralNumber: '77:01:0004012:1234',
+          area: '54.6',
+          objectType: OBJECT_TYPE_VALUE,
+        }),
+        updatedAt: expect.any(String),
+      }),
+    );
+  });
+
   it('should refresh districts and reset district when the city changes', async () => {
     await createComponent();
 
@@ -413,4 +436,8 @@ async function settleFixture(fixture: ComponentFixture<EstimationForm>): Promise
   fixture.detectChanges();
   await fixture.whenStable();
   fixture.detectChanges();
+}
+
+async function waitForMs(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
