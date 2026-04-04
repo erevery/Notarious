@@ -1,0 +1,69 @@
+<div class="queue-section">
+  <h2>Очередь ожидающих заявок (New)</h2>
+
+  <table class="queue-table">
+    <thead>
+      <tr>
+        <th>Адрес</th>
+        <th>Тип имущества</th>
+        <th>Дата подачи</th>
+        <th>Время ожидания</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of queueItems(); track item.id) {
+      <tr>
+        <td>{{ item.address }}</td>
+        <td>{{ item.propertyType }}</td>
+        <td>{{ item.submissionDate | date:'dd.MM.yyyy HH:mm' }}</td>
+        <td>
+          <span [class]="getWaitingClass(item)">{{ getWaitingHours(item) }} ч</span>
+        </td>
+        <td class="actions">
+          <button (click)="openAssignModal(item)" class="btn-assign">Назначить нотариуса</button>
+          <button (click)="openRejectModal(item)" class="btn-reject">Отклонить</button>
+        </td>
+      </tr>
+      } @empty {
+      <tr>
+        <td colspan="5">Нет заявок в очереди</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+
+  <div class="pagination">
+    <button (click)="prevPage()" [disabled]="page() === 1">Назад</button>
+    <span>Страница {{ page() }} из {{ totalPages() }}</span>
+    <button (click)="nextPage()" [disabled]="page() === totalPages()">Вперёд</button>
+  </div>
+</div>
+
+@if (showAssignDialog()) {
+<div class="modal-overlay">
+  <div class="modal">
+    <h3>Назначить нотариуса</h3>
+    <select [(ngModel)]="selectedNotaryId">
+      @for (notary of notariesList(); track notary.id) {
+      <option [value]="notary.id">{{ notary.fullName }}</option>
+      }
+    </select>
+    <div class="modal-actions">
+      <button (click)="confirmAssign()">Подтвердить</button>
+      <button (click)="closeAssignDialog()">Отмена</button>
+    </div>
+  </div>
+</div>
+} @if (showRejectDialog()) {
+<div class="modal-overlay">
+  <div class="modal">
+    <h3>Отклонить заявку</h3>
+    <textarea [(ngModel)]="rejectReason" placeholder="Причина отклонения"></textarea>
+    <div class="modal-actions">
+      <button (click)="confirmReject()">Отклонить</button>
+      <button (click)="closeRejectDialog()">Отмена</button>
+    </div>
+  </div>
+</div>
+}
