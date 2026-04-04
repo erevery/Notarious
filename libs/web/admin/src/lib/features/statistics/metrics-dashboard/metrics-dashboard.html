@@ -1,0 +1,57 @@
+<div class="kpi-row">
+  <div class="kpi-card">
+    <h3>Всего заявок</h3>
+    <div class="value">{{ totalAssessments() }}</div>
+  </div>
+  <div class="kpi-card">
+    <h3>Конверсия в завершённые</h3>
+    <div class="value">{{ conversionRate() }}%</div>
+  </div>
+  <div class="kpi-card">
+    <h3>Ср. время обработки</h3>
+    <div class="value">{{ avgProcessingTime() }} дн</div>
+  </div>
+  <div class="kpi-card">
+    <h3>Активных нотариусов</h3>
+    <div class="value">{{ activeNotaries() }}</div>
+  </div>
+</div>
+
+<div class="charts-row">
+  <div class="chart-card">
+    <h3>Заявки по статусам</h3>
+    @for (item of statusBreakdown(); track item.status) {
+    <div class="bar-item">
+      <span class="status-label">{{ item.status }}</span>
+      <div class="bar-bg">
+        <div class="bar-fill" [style.width.%]="item.percent" [style.backgroundColor]="item.color"></div>
+      </div>
+      <span class="count">{{ item.count }}</span>
+    </div>
+    }
+  </div>
+
+  <div class="table-card">
+    <h3>Топ нотариусов</h3>
+    <table class="top-notaries">
+      <thead>
+        <tr>
+          <th>Нотариус</th>
+          <th>Завершено</th>
+          <th>Ср. время (дни)</th>
+          <th>Рейтинг</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (n of topNotariesMock(); track n.name) {
+        <tr>
+          <td>{{ n.name }}</td>
+          <td>{{ n.completed }}</td>
+          <td>{{ n.avgTime }}</td>
+          <td>{{ n.rating }} ★</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
