@@ -26,11 +26,33 @@ export const adminRoutes: Route[] = [
       } as Route,
       {
         path: 'orders',
-        ...placeholder('Заявки', [
-          'Управление заказами',
-          'Управление статусами',
-          'Очередь оценок',
-          'Ручная модерация',
+        loadComponent: () =>
+          import('./features/RequestAssessment/RequestAssessment').then((m) => m.RequestAssessment),
+      } as Route,
+      {
+        path: 'orders/requests',
+        loadComponent: () =>
+          import('./features/RequestAssessment/requests/requests').then((m) => m.RequestsComponent),
+      } as Route,
+      {
+        path: 'orders/statuses',
+        ...placeholder('Управление статусами', [
+          'Изменение статусов заказов',
+          'Отслеживание переходов между этапами',
+        ]),
+      } as Route,
+      {
+        path: 'orders/queue',
+        ...placeholder('Очередь оценок', [
+          'Список заявок, ожидающих оценки',
+          'Распределение по нотариусам',
+        ]),
+      } as Route,
+      {
+        path: 'orders/moderation',
+        ...placeholder('Ручная модерация', [
+          'Проверка и модерация спорных заявок',
+          'Ручные корректировки',
         ]),
       } as Route,
       {
