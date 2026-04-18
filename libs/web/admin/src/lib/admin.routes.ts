@@ -15,24 +15,48 @@ export const adminRoutes: Route[] = [
       { path: '', ...placeholder('Главное меню', ['Обзор панели администратора']) } as Route,
       {
         path: 'users',
-        ...placeholder('Пользователи и заказы', [
-          'CRUD пользователей',
-          'Роли и права',
-          'Блокировки',
-          'Управление заказами/статусами',
-          'Ручные корректировки',
-          'Модерация файлов',
-        ]),
-      } as Route,
+        children: [
+          {
+            path: '',
+            ...placeholder('Пользователи и заказы', [
+              'CRUD пользователей',
+              'Роли и права',
+              'Блокировки',
+              'Управление заказами/статусами',
+              'Ручные корректировки',
+              'Модерация файлов',
+            ]),
+          } as Route,
+          {
+            path: ':id',
+            loadComponent: () =>
+              import('./features/users/user-detail/user-detail').then(
+                (m) => m.AdminUserDetailComponent,
+              ),
+          } as Route,
+        ],
+      },
       {
         path: 'orders',
-        ...placeholder('Заявки', [
-          'Управление заказами',
-          'Управление статусами',
-          'Очередь оценок',
-          'Ручная модерация',
-        ]),
-      } as Route,
+        children: [
+          {
+            path: '',
+            ...placeholder('Заявки', [
+              'Управление заказами',
+              'Управление статусами',
+              'Очередь оценок',
+              'Ручная модерация',
+            ]),
+          } as Route,
+          {
+            path: ':id',
+            loadComponent: () =>
+              import('./features/orders/order-detail/order-detail').then(
+                (m) => m.AdminOrderDetailComponent,
+              ),
+          } as Route,
+        ],
+      },
       {
         path: 'payments',
         ...placeholder('Платежи', [

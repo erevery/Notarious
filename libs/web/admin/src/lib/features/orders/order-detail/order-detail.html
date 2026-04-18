@@ -1,0 +1,236 @@
+@let currentOrder = order(); @let currentNotary = assignedNotary();
+
+<section class="admin-order-detail">
+  <header class="admin-order-detail__hero">
+    <div class="admin-order-detail__hero-copy">
+      <p class="admin-order-detail__eyebrow">Администратор / заявки / {{ currentOrder.id }}</p>
+      <h2 data-testid="order-detail-title">{{ currentOrder.address }}</h2>
+      <p class="admin-order-detail__lead">
+        Карточка заявки для `/admin/orders/:id` с встроенной order-лентой и security-контекстом участников.
+      </p>
+    </div>
+
+    <div class="admin-order-detail__hero-actions">
+      <a class="admin-order-detail__link" routerLink="/admin/orders">К списку заявок</a>
+      <a class="admin-order-detail__link admin-order-detail__link--accent" routerLink="/admin/monitoring">
+        Общий monitoring
+      </a>
+    </div>
+  </header>
+
+  <section class="admin-order-detail__stats" aria-label="Сводка по заявке">
+    <article class="admin-order-detail__stat" [attr.data-tone]="currentStatus() === 'Отменена' ? 'warning' : 'accent'">
+      <span>Статус</span>
+      <strong>{{ currentStatus() }}</strong>
+      <small>{{ currentOrder.slaLabel }}</small>
+    </article>
+
+    <article class="admin-order-detail__stat">
+      <span>Оплата</span>
+      <strong>{{ currentOrder.paymentLabel }}</strong>
+      <small>{{ currentOrder.priceLabel }}</small>
+    </article>
+
+    <article class="admin-order-detail__stat">
+      <span>Заявитель</span>
+      <strong>{{ currentOrder.applicant.name }}</strong>
+      <small>{{ currentOrder.applicant.id }}</small>
+    </article>
+
+    <article class="admin-order-detail__stat">
+      <span>Security</span>
+      <strong>{{ securitySummary() }}</strong>
+      <small>{{ currentOrder.updatedAt }}</small>
+    </article>
+  </section>
+
+  <section class="admin-order-detail__overview">
+    <article class="admin-order-detail__card">
+      <div class="admin-order-detail__card-header">
+        <div>
+          <h3>Паспорт заявки</h3>
+          <p>{{ currentOrder.adminComment }}</p>
+        </div>
+      </div>
+
+      <dl class="admin-order-detail__detail-grid">
+        <div>
+          <dt>ID</dt>
+          <dd>{{ currentOrder.id }}</dd>
+        </div>
+        <div>
+          <dt>Тип объекта</dt>
+          <dd>{{ currentOrder.propertyType }}</dd>
+        </div>
+        <div>
+          <dt>Сценарий</dt>
+          <dd>{{ currentOrder.purposeLabel }}</dd>
+        </div>
+        <div>
+          <dt>Создана</dt>
+          <dd>{{ currentOrder.createdAt }}</dd>
+        </div>
+        <div>
+          <dt>Обновлена</dt>
+          <dd>{{ currentOrder.updatedAt }}</dd>
+        </div>
+        <div>
+          <dt>Стоимость</dt>
+          <dd>{{ currentOrder.priceLabel }}</dd>
+        </div>
+      </dl>
+
+      <div class="admin-order-detail__participants">
+        <div>
+          <span>Заявитель</span>
+          <strong>{{ currentOrder.applicant.name }}</strong>
+          <small>{{ currentOrder.applicant.email }} · {{ currentOrder.applicant.phone }}</small>
+          <a [routerLink]="['/admin/users', currentOrder.applicant.id]">Открыть пользователя</a>
+        </div>
+
+        <div>
+          <span>Нотариус</span>
+          <strong>{{ currentNotary?.name ?? 'Не назначен' }}</strong>
+          <small>
+            @if (currentNotary) { {{ currentNotary.email }} · {{ currentNotary.phone }} } @else { Ожидает назначения }
+          </small>
+          @if (currentNotary) {
+          <a [routerLink]="['/admin/users', currentNotary.id]">Открыть пользователя</a>
+          }
+        </div>
+      </div>
+    </article>
+
+    <article class="admin-order-detail__card">
+      <div class="admin-order-detail__card-header">
+        <div>
+          <h3>Действия администратора</h3>
+          <p>{{ pageMessage() }}</p>
+        </div>
+      </div>
+
+      <div class="admin-order-detail__controls">
+        <label class="admin-order-detail__field">
+          <span>Статус</span>
+          <select [value]="currentStatus()" (change)="updateStatus($any($event.target).value)">
+            @for (status of statusOptions; track status) {
+            <option [value]="status">{{ status }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="admin-order-detail__field">
+          <span>Назначить notaryId</span>
+          <input
+            type="text"
+            placeholder="notary-118"
+            [value]="notaryDraft()"
+            (input)="updateNotaryDraft($any($event.target).value)" />
+        </label>
+
+        <label class="admin-order-detail__field">
+          <span>Причина отмены</span>
+          <textarea
+            rows="3"
+            placeholder="Опишите причину"
+            [value]="cancelReason()"
+            (input)="updateCancelReason($any($event.target).value)"></textarea>
+        </label>
+
+        <div class="admin-order-detail__button-row">
+          <button
+            type="button"
+            class="admin-order-detail__button admin-order-detail__button--primary"
+            (click)="assignNotary()">
+            Взять в работу
+          </button>
+          <button
+            type="button"
+            class="admin-order-detail__button admin-order-detail__button--danger"
+            (click)="cancelOrder()">
+            Отменить
+          </button>
+          <button type="button" class="admin-order-detail__button" (click)="resetLocalState()">
+            Сбросить локально
+          </button>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="admin-order-detail__content-grid">
+    <article class="admin-order-detail__card">
+      <div class="admin-order-detail__card-header">
+        <div>
+          <h3>Документы</h3>
+          <p>Секция остается реальной частью detail-screen даже до подключения document moderation API.</p>
+        </div>
+      </div>
+
+      @if (currentOrder.documents.length) {
+      <div class="admin-order-detail__table-wrap">
+        <table class="admin-order-detail__table">
+          <thead>
+            <tr>
+              <th>Документ</th>
+              <th>Тип</th>
+              <th>Статус</th>
+              <th>Обновлен</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (document of currentOrder.documents; track document.name) {
+            <tr>
+              <td>{{ document.name }}</td>
+              <td>{{ document.typeLabel }}</td>
+              <td>{{ document.statusLabel }}</td>
+              <td>{{ document.updatedAt }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      } @else {
+      <div class="admin-order-detail__empty">
+        <strong>Документы не загружены.</strong>
+        <p>Пустое состояние тоже поддерживается route-level компонентом.</p>
+      </div>
+      }
+    </article>
+
+    <article class="admin-order-detail__card">
+      <div class="admin-order-detail__card-header">
+        <div>
+          <h3>История статусов</h3>
+          <p>Локальная timeline помогает не терять контекст до подключения backend history.</p>
+        </div>
+      </div>
+
+      <ol class="admin-order-detail__timeline">
+        @for (item of currentOrder.timeline; track item.title + item.at) {
+        <li>
+          <strong>{{ item.title }}</strong>
+          <span>{{ item.at }}</span>
+          <p>{{ item.note }}</p>
+        </li>
+        }
+      </ol>
+    </article>
+  </section>
+
+  <lib-order-logs-panel
+    [events]="auditEvents"
+    [loading]="false"
+    [error]="null"
+    [entityId]="currentOrder.id"
+    (eventSelected)="handleAuditSelection($event)"
+    (exportRequested)="handleAuditExport($event)"></lib-order-logs-panel>
+
+  <lib-security-events
+    [events]="securityContextEvents()"
+    [loading]="false"
+    [error]="null"
+    (rowSelected)="handleSecuritySelection($event)"
+    (filtersChanged)="handleSecurityFiltersChanged($event)"
+    (exportRequested)="handleSecurityExport($event)"></lib-security-events>
+</section>

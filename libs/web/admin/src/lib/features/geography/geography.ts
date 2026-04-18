@@ -145,7 +145,7 @@ export class Geography implements OnInit {
     const layers: L.Layer[] = [];
     for (const p of points) {
       const marker = L.marker([p.lat, p.lng]);
-      const link = `/admin/orders?id=${p.id}`;
+      const link = `/admin/orders/${encodeURIComponent(p.id)}`;
       marker.bindPopup(
         `<div class="geography-popup">
           <strong>${p.address}</strong><br>
