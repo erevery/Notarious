@@ -18,14 +18,10 @@ export const adminRoutes: Route[] = [
         children: [
           {
             path: '',
-            ...placeholder('Пользователи и заказы', [
-              'CRUD пользователей',
-              'Роли и права',
-              'Блокировки',
-              'Управление заказами/статусами',
-              'Ручные корректировки',
-              'Модерация файлов',
-            ]),
+            loadComponent: () =>
+              import('./features/users/users-list/users-list').then(
+                (m) => m.AdminUsersListComponent,
+              ),
           } as Route,
           {
             path: ':id',
@@ -41,12 +37,10 @@ export const adminRoutes: Route[] = [
         children: [
           {
             path: '',
-            ...placeholder('Заявки', [
-              'Управление заказами',
-              'Управление статусами',
-              'Очередь оценок',
-              'Ручная модерация',
-            ]),
+            loadComponent: () =>
+              import('./features/orders/orders-list/orders-list').then(
+                (m) => m.AdminOrdersListComponent,
+              ),
           } as Route,
           {
             path: ':id',
