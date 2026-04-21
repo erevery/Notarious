@@ -217,7 +217,7 @@ export class AdminUserDetailComponent {
     const nextRole = this.asRole(role);
     this.roleOverride.set(nextRole);
     this.statusMessage.set(
-      `Роль локально переключена на «${nextRole}». TODO: подключить mutation после появления backend-метода.`,
+      `Роль локально переключена на «${nextRole}». Сохранение в backend появится на этапе 2.`,
     );
   }
 

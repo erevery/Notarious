@@ -258,7 +258,7 @@ export class AdminOrderDetailComponent {
     this.notaryOverride.set(buildParticipantFromId(rawId));
     this.statusOverride.set('В работе');
     this.pageMessage.set(
-      `Нотариус ${rawId} назначен на заявку локально. TODO: заменить на verifyAssessment.`,
+      `Нотариус ${rawId} назначен на заявку локально. После backend-интеграции вызов уйдёт в verifyAssessment.`,
     );
   }
 
