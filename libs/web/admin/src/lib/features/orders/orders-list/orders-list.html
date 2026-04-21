@@ -1,0 +1,120 @@
+<section class="admin-orders-list">
+  <header class="admin-orders-list__hero">
+    <div class="admin-orders-list__hero-copy">
+      <p class="admin-orders-list__eyebrow">Администратор / заявки</p>
+      <h2 data-testid="orders-list-title">Заявки</h2>
+      <p class="admin-orders-list__lead">
+        Очередь оценок, текущий статус и SLA. Переход по строке открывает карточку `/admin/orders/:id` с настоящим
+        order-аудитом и security-контекстом.
+      </p>
+    </div>
+
+    <div class="admin-orders-list__hero-actions">
+      <a class="admin-orders-list__link" routerLink="/admin/monitoring">Общий monitoring</a>
+      <a class="admin-orders-list__link admin-orders-list__link--accent" routerLink="/admin/users">К пользователям</a>
+    </div>
+  </header>
+
+  <section class="admin-orders-list__stats" aria-label="Сводка по заявкам">
+    <article class="admin-orders-list__stat">
+      <span>Всего</span>
+      <strong>{{ totalLabel() }}</strong>
+      <small>После применения фильтров</small>
+    </article>
+
+    <article class="admin-orders-list__stat" [attr.data-tone]="inProgressCount() ? 'accent' : 'neutral'">
+      <span>В работе</span>
+      <strong>{{ inProgressCount() }}</strong>
+      <small>Заявки у нотариуса прямо сейчас</small>
+    </article>
+
+    <article class="admin-orders-list__stat" [attr.data-tone]="unassignedCount() ? 'warning' : 'success'">
+      <span>Без нотариуса</span>
+      <strong>{{ unassignedCount() }}</strong>
+      <small>Требуют ручного распределения</small>
+    </article>
+  </section>
+
+  <article class="admin-orders-list__card">
+    <div class="admin-orders-list__card-header">
+      <div>
+        <h3>Каталог заявок</h3>
+        <p>Поиск и фильтр по статусу работают локально до подключения backend-списка.</p>
+      </div>
+    </div>
+
+    <div class="admin-orders-list__filters">
+      <label class="admin-orders-list__field">
+        <span>Поиск</span>
+        <input
+          type="search"
+          placeholder="ID, адрес, заявитель, нотариус"
+          [value]="searchQuery()"
+          (input)="updateSearch($any($event.target).value)"
+          data-testid="orders-list-search" />
+      </label>
+
+      <label class="admin-orders-list__field">
+        <span>Статус</span>
+        <select [value]="statusFilter()" (change)="updateStatusFilter($any($event.target).value)">
+          @for (option of statusOptions; track option) {
+          <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </label>
+
+      <button type="button" class="admin-orders-list__button" (click)="resetFilters()">Сбросить</button>
+    </div>
+
+    @if (filteredOrders().length) {
+    <div class="admin-orders-list__table-wrap">
+      <table class="admin-orders-list__table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Адрес</th>
+            <th>Статус</th>
+            <th>Заявитель</th>
+            <th>Нотариус</th>
+            <th>Создана</th>
+            <th>SLA</th>
+            <th>Оплата</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody data-testid="orders-list-body">
+          @for (row of filteredOrders(); track row.id) {
+          <tr>
+            <td>{{ row.id }}</td>
+            <td>
+              <strong>{{ row.address }}</strong>
+              <small>{{ row.propertyType }}</small>
+            </td>
+            <td>
+              <span class="admin-orders-list__badge" [attr.data-tone]="statusTone(row)">{{ row.status }}</span>
+            </td>
+            <td>
+              <a [routerLink]="['/admin/users', row.applicantId]">{{ row.applicantName }}</a>
+            </td>
+            <td>{{ row.notaryName ?? 'Не назначен' }}</td>
+            <td>{{ row.createdAt }}</td>
+            <td>{{ row.slaLabel }}</td>
+            <td>
+              <span class="admin-orders-list__badge" [attr.data-tone]="paymentTone(row)">{{ row.paymentState }}</span>
+            </td>
+            <td>
+              <a [routerLink]="['/admin/orders', row.id]">Открыть</a>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="admin-orders-list__empty">
+      <strong>Под фильтры ничего не подошло.</strong>
+      <p>Сбросьте фильтры или измените запрос, чтобы увидеть все заявки каталога.</p>
+    </div>
+    }
+  </article>
+</section>

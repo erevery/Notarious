@@ -194,7 +194,7 @@ In-app уведомления, фильтры, прочитано/не проч�
 | ------------------- | -------------------------- |
 | **AuditLogService** | ListAuditLogs, GetAuditLog |
 
-Аудит действий (кто/что/когда), фильтры, экспорт, просмотр логов по пользователю/заказу, события безопасности. _AuditLogService в proto есть, в пакет пока не экспортирован._
+Аудит действий (кто/что/когда), фильтры, экспорт, просмотр логов по пользователю/заказу, события безопасности. На март 2026 audit-контракт в репозитории ещё не заведен: `audit.proto` отсутствует, `libs/api/audit` отсутствует, сервис не зарегистрирован в `apps/api/src/app/connect-router.registry.ts`. Для текущей frontend-подготовки используем mock-данные; backend/API интеграция вынесена в отдельный этап D10.
 
 ---
 
@@ -240,8 +240,8 @@ In-app уведомления, фильтры, прочитано/не проч�
 | UserService         | user/v1alpha1/user.proto                 | Да                                       |
 | ReportService       | report/v1alpha1/report.proto             | **Нет**                                  |
 | NotificationService | notification/v1alpha1/notification.proto | **Нет**                                  |
-| AuditLogService     | audit/v1alpha1/audit.proto               | **Нет**                                  |
+| AuditLogService     | — (`audit.proto` отсутствует в repo)     | **Нет**                                  |
 | PromoService        | promo/v1alpha1/promo.proto               | **Нет**                                  |
 | SaleService         | sale/v1alpha1/sale.proto                 | **Нет**                                  |
 
-Пакет экспортирует только модули, перечисленные в [libs/shared/api-contracts/src/index.ts](../libs/shared/api-contracts/src/index.ts). Сервисы Report, Notification, Audit, Promo, Sale описаны в proto и при появлении соответствующих маршрутов на бэкенде их нужно добавить в `index.ts` и зарегистрировать в Connect-router приложения API ([apps/api/src/app/connect-router.registry.ts](../apps/api/src/app/connect-router.registry.ts)).
+Пакет экспортирует только модули, перечисленные в [libs/shared/api-contracts/src/index.ts](../libs/shared/api-contracts/src/index.ts). Для audit-сценариев текущая договорённость такая: frontend использует mock-данные, а D10 с добавлением `audit.proto`, `libs/api/audit` и регистрацией в Connect-router приложения API ([apps/api/src/app/connect-router.registry.ts](../apps/api/src/app/connect-router.registry.ts)) выполняется отдельным backend-этапом.
