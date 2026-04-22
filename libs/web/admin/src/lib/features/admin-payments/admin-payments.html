@@ -1,0 +1,114 @@
+<section class="admin-payments">
+  <header class="admin-payments__hero">
+    <div class="admin-payments__hero-copy">
+      <p class="admin-payments__eyebrow">Администратор / платежи</p>
+      <h2 data-testid="payments-title">Платежи</h2>
+      <p class="admin-payments__lead">
+        История транзакций и платежей. Возврат средств работает локально в рамках текущего сеанса.
+      </p>
+    </div>
+
+    <div class="admin-payments__hero-actions">
+      <a class="admin-payments__link" routerLink="/admin/subscriptions">К подпискам</a>
+      <a class="admin-payments__link admin-payments__link--accent" routerLink="/admin/orders">К заявкам</a>
+    </div>
+  </header>
+
+  <section class="admin-payments__stats" aria-label="Сводка по платежам">
+    <article class="admin-payments__stat">
+      <span>Всего</span>
+      <strong>{{ totalLabel() }}</strong>
+      <small>После применения фильтров</small>
+    </article>
+
+    <article class="admin-payments__stat" [attr.data-tone]="refundedCount() ? 'warning' : 'success'">
+      <span>Возвраты</span>
+      <strong>{{ refundedCount() }}</strong>
+      <small>Обработанные возвраты</small>
+    </article>
+  </section>
+
+  <article class="admin-payments__card">
+    <div class="admin-payments__card-header">
+      <div>
+        <h3>Каталог платежей</h3>
+        <p>Поиск по ID и заявке, фильтр по статусу работают локально до подключения backend.</p>
+      </div>
+    </div>
+
+    <div class="admin-payments__filters">
+      <label class="admin-payments__field">
+        <span>Поиск</span>
+        <input
+          type="search"
+          placeholder="ID платежа, заявка"
+          [value]="searchQuery()"
+          (input)="updateSearch($any($event.target).value)"
+          data-testid="payments-search" />
+      </label>
+
+      <label class="admin-payments__field">
+        <span>Статус</span>
+        <select [value]="statusFilter()" (change)="updateStatusFilter($any($event.target).value)">
+          @for (option of statusOptions; track option) {
+          <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </label>
+
+      <button type="button" class="admin-payments__button" (click)="resetFilters()">Сбросить</button>
+    </div>
+
+    @if (filteredPayments().length) {
+    <div class="admin-payments__table-wrap">
+      <table class="admin-payments__table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Заявка</th>
+            <th>Сумма</th>
+            <th>Метод</th>
+            <th>Статус</th>
+            <th>Дата</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody data-testid="payments-body">
+          @for (row of filteredPayments(); track row.id) {
+          <tr>
+            <td>{{ row.id }}</td>
+            <td>
+              <a [routerLink]="['/admin/orders', row.orderId]">{{ row.orderId }}</a>
+            </td>
+            <td>{{ row.amount }} {{ row.currency }}</td>
+            <td>{{ labelForMethod(row.method) }}</td>
+            <td>
+              <span class="admin-payments__badge" [attr.data-tone]="statusTone(row.status)"
+                >{{ labelForStatus(row.status) }}</span
+              >
+            </td>
+            <td>{{ row.createdAt }}</td>
+            <td>
+              @if (row.status === 'success') {
+              <button type="button" class="admin-payments__refund-btn" (click)="refundPayment(row.id)">
+                Вернуть средства
+              </button>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="admin-payments__empty">
+      <strong>Под фильтры ничего не подошло.</strong>
+      <p>Сбросьте фильтры или измените запрос, чтобы увидеть все платежи каталога.</p>
+    </div>
+    } @if (statusMessage()) {
+    <div class="admin-payments__message">
+      <small>{{ statusMessage() }}</small>
+    </div>
+    }
+  </article>
+</section>

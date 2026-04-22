@@ -1,0 +1,113 @@
+<section class="admin-users-list">
+  <header class="admin-users-list__hero">
+    <div class="admin-users-list__hero-copy">
+      <p class="admin-users-list__eyebrow">Администратор / пользователи</p>
+      <h2 data-testid="users-list-title">Пользователи</h2>
+      <p class="admin-users-list__lead">
+        Каталог заявителей, нотариусов и администраторов. Открывается карточка `/admin/users/:id` с настоящим аудитом и
+        security-контекстом.
+      </p>
+    </div>
+
+    <div class="admin-users-list__hero-actions">
+      <a class="admin-users-list__link" routerLink="/admin/monitoring">Общий monitoring</a>
+      <a class="admin-users-list__link admin-users-list__link--accent" routerLink="/admin/orders">К заявкам</a>
+    </div>
+  </header>
+
+  <section class="admin-users-list__stats" aria-label="Сводка по пользователям">
+    <article class="admin-users-list__stat">
+      <span>Всего</span>
+      <strong>{{ totalLabel() }}</strong>
+      <small>После применения фильтров</small>
+    </article>
+
+    <article class="admin-users-list__stat" [attr.data-tone]="blockedCount() ? 'warning' : 'success'">
+      <span>Заблокированы</span>
+      <strong>{{ blockedCount() }}</strong>
+      <small>Требуют ручной разблокировки</small>
+    </article>
+
+    <article class="admin-users-list__stat">
+      <span>Нотариусы</span>
+      <strong>{{ notaryCount() }}</strong>
+      <small>Активный пул исполнителей</small>
+    </article>
+  </section>
+
+  <article class="admin-users-list__card">
+    <div class="admin-users-list__card-header">
+      <div>
+        <h3>Каталог пользователей</h3>
+        <p>
+          Фильтры работают локально до подключения backend-списка. Переход по строке ведёт на реальную detail-страницу.
+        </p>
+      </div>
+    </div>
+
+    <div class="admin-users-list__filters">
+      <label class="admin-users-list__field">
+        <span>Поиск</span>
+        <input
+          type="search"
+          placeholder="ФИО, email, ID, город"
+          [value]="searchQuery()"
+          (input)="updateSearch($any($event.target).value)"
+          data-testid="users-list-search" />
+      </label>
+
+      <label class="admin-users-list__field">
+        <span>Роль</span>
+        <select [value]="roleFilter()" (change)="updateRoleFilter($any($event.target).value)">
+          @for (option of roleOptions; track option) {
+          <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </label>
+
+      <button type="button" class="admin-users-list__button" (click)="resetFilters()">Сбросить</button>
+    </div>
+
+    @if (filteredUsers().length) {
+    <div class="admin-users-list__table-wrap">
+      <table class="admin-users-list__table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>ФИО</th>
+            <th>Email</th>
+            <th>Роль</th>
+            <th>Город</th>
+            <th>Статус</th>
+            <th>Активность</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody data-testid="users-list-body">
+          @for (row of filteredUsers(); track row.id) {
+          <tr>
+            <td>{{ row.id }}</td>
+            <td>{{ row.fullName }}</td>
+            <td>{{ row.email }}</td>
+            <td>{{ row.role }}</td>
+            <td>{{ row.city }}</td>
+            <td>
+              <span class="admin-users-list__badge" [attr.data-tone]="statusTone(row)">{{ row.status }}</span>
+            </td>
+            <td>{{ row.lastSeenAt }}</td>
+            <td>
+              <a [routerLink]="['/admin/users', row.id]">Открыть</a>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="admin-users-list__empty">
+      <strong>Под фильтры ничего не подошло.</strong>
+      <p>Сбросьте фильтры или измените запрос, чтобы увидеть всех пользователей каталога.</p>
+    </div>
+    }
+  </article>
+</section>

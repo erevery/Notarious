@@ -1,0 +1,102 @@
+<section class="admin-subscriptions">
+  <header class="admin-subscriptions__hero">
+    <div class="admin-subscriptions__hero-copy">
+      <p class="admin-subscriptions__eyebrow">Администратор / подписки</p>
+      <h2 data-testid="subscriptions-title">Подписки</h2>
+      <p class="admin-subscriptions__lead">Управление подписками пользователей. Статусы подписок и сроки продления.</p>
+    </div>
+
+    <div class="admin-subscriptions__hero-actions">
+      <a class="admin-subscriptions__link" routerLink="/admin/payments">К платежам</a>
+      <a class="admin-subscriptions__link admin-subscriptions__link--accent" routerLink="/admin/users"
+        >К пользователям</a
+      >
+    </div>
+  </header>
+
+  <section class="admin-subscriptions__stats" aria-label="Сводка по подпискам">
+    <article class="admin-subscriptions__stat">
+      <span>Всего</span>
+      <strong>{{ totalLabel() }}</strong>
+      <small>После применения фильтров</small>
+    </article>
+
+    <article class="admin-subscriptions__stat" [attr.data-tone]="activeCount() ? 'success' : 'neutral'">
+      <span>Активных</span>
+      <strong>{{ activeCount() }}</strong>
+      <small>Подписок с активным статусом</small>
+    </article>
+  </section>
+
+  <article class="admin-subscriptions__card">
+    <div class="admin-subscriptions__card-header">
+      <div>
+        <h3>Каталог подписок</h3>
+        <p>Поиск по пользователю и тарифу, фильтр по статусу работают локально до подключения backend.</p>
+      </div>
+    </div>
+
+    <div class="admin-subscriptions__filters">
+      <label class="admin-subscriptions__field">
+        <span>Поиск</span>
+        <input
+          type="search"
+          placeholder="Пользователь, тариф, ID"
+          [value]="searchQuery()"
+          (input)="updateSearch($any($event.target).value)"
+          data-testid="subscriptions-search" />
+      </label>
+
+      <label class="admin-subscriptions__field">
+        <span>Статус</span>
+        <select [value]="statusFilter()" (change)="updateStatusFilter($any($event.target).value)">
+          @for (option of statusOptions; track option) {
+          <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </label>
+
+      <button type="button" class="admin-subscriptions__button" (click)="resetFilters()">Сбросить</button>
+    </div>
+
+    @if (filteredSubscriptions().length) {
+    <div class="admin-subscriptions__table-wrap">
+      <table class="admin-subscriptions__table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Пользователь</th>
+            <th>Тариф</th>
+            <th>Статус</th>
+            <th>Начало</th>
+            <th>Продление</th>
+          </tr>
+        </thead>
+        <tbody data-testid="subscriptions-body">
+          @for (row of filteredSubscriptions(); track row.id) {
+          <tr>
+            <td>{{ row.id }}</td>
+            <td>
+              <a [routerLink]="['/admin/users', row.userId]">{{ row.userName }}</a>
+            </td>
+            <td>{{ row.planName }}</td>
+            <td>
+              <span class="admin-subscriptions__badge" [attr.data-tone]="statusTone(row.status)"
+                >{{ labelForStatus(row.status) }}</span
+              >
+            </td>
+            <td>{{ row.startedAt }}</td>
+            <td>{{ row.renewAt }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="admin-subscriptions__empty">
+      <strong>Под фильтры ничего не подошло.</strong>
+      <p>Сбросьте фильтры или измените запрос, чтобы увидеть все подписки каталога.</p>
+    </div>
+    }
+  </article>
+</section>

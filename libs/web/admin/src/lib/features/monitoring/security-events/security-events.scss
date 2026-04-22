@@ -1,0 +1,474 @@
+.security-events {
+  --security-events-bg: #f6f8fc;
+  --security-events-surface: #fff;
+  --security-events-surface-alt: #fdf2e8;
+  --security-events-border: #d7deea;
+  --security-events-border-strong: #8298ba;
+  --security-events-text: #182235;
+  --security-events-text-soft: #5b6780;
+  --security-events-accent: #0e7490;
+  --security-events-accent-soft: rgb(14 116 144 / 12%);
+  --security-events-warning: #d97706;
+  --security-events-warning-soft: rgb(217 119 6 / 14%);
+  --security-events-danger: #b42318;
+  --security-events-danger-soft: rgb(180 35 24 / 12%);
+
+  display: grid;
+  gap: 1.5rem;
+
+  padding: 1.5rem;
+  border: 1px solid var(--security-events-border);
+  border-radius: 1.5rem;
+
+  background:
+    radial-gradient(circle at top right, rgb(14 116 144 / 12%), transparent 34%),
+    linear-gradient(180deg, #fbfdff 0%, var(--security-events-bg) 100%);
+}
+
+.security-events__header,
+.security-events__row-top,
+.security-events__row-meta,
+.security-events__details-top {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.security-events__copy,
+.security-events__actions,
+.security-events__filters,
+.security-events__list,
+.security-events__details-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.security-events__copy h2,
+.security-events__copy p,
+.security-events__field,
+.security-events__stat,
+.security-events__row-copy p,
+.security-events__timestamp,
+.security-events__meta,
+.security-events__state p {
+  margin: 0;
+}
+
+.security-events__eyebrow,
+.security-events__details-label {
+  margin: 0;
+
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--security-events-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.security-events__copy {
+  max-width: 42rem;
+}
+
+.security-events__copy h2 {
+  font-size: 1.55rem;
+  line-height: 1.2;
+  color: var(--security-events-text);
+}
+
+.security-events__copy p,
+.security-events__stat small,
+.security-events__row-copy p,
+.security-events__grid small,
+.security-events__meta dt,
+.security-events__state p {
+  color: var(--security-events-text-soft);
+}
+
+.security-events__actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.security-events__stat {
+  gap: 0.25rem;
+
+  min-height: 100%;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--security-events-border);
+  border-radius: 1.15rem;
+
+  background: rgb(255 255 255 / 78%);
+}
+
+.security-events__stat span,
+.security-events__field span,
+.security-events__grid span,
+.security-events__timestamp span,
+.security-events__changes span {
+  font-size: 0.82rem;
+  color: var(--security-events-text-soft);
+}
+
+.security-events__stat strong,
+.security-events__row-copy strong,
+.security-events__grid strong,
+.security-events__timestamp strong,
+.security-events__meta dd,
+.security-events__details-card h3 {
+  color: var(--security-events-text);
+}
+
+.security-events__stat--accent {
+  border-color: rgb(14 116 144 / 20%);
+  background: linear-gradient(180deg, #fff 0%, rgb(14 116 144 / 8%) 100%);
+}
+
+.security-events__stat--warning {
+  border-color: rgb(217 119 6 / 20%);
+  background: linear-gradient(180deg, #fff 0%, rgb(217 119 6 / 8%) 100%);
+}
+
+.security-events__export,
+.security-events__reset {
+  cursor: pointer;
+
+  border: 0;
+  border-radius: 1rem;
+
+  font: inherit;
+  font-weight: 700;
+
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+.security-events__export {
+  padding: 0.95rem 1.25rem;
+  color: #fff;
+  background: var(--security-events-accent);
+  box-shadow: 0 14px 32px rgb(14 116 144 / 20%);
+}
+
+.security-events__export:hover:not(:disabled),
+.security-events__reset:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.security-events__export:disabled,
+.security-events__reset:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.security-events__filters {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: end;
+}
+
+.security-events__field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.security-events__field input {
+  width: 100%;
+  padding: 0.82rem 0.9rem;
+  border: 1px solid var(--security-events-border);
+  border-radius: 0.95rem;
+
+  font: inherit;
+  color: var(--security-events-text);
+
+  background: rgb(255 255 255 / 88%);
+}
+
+.security-events__field input:focus-visible {
+  border-color: var(--security-events-accent);
+  outline: 2px solid var(--security-events-accent-soft);
+  outline-offset: 2px;
+}
+
+.security-events__filter-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.security-events__reset {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--security-events-border);
+  color: var(--security-events-text);
+  background: rgb(255 255 255 / 88%);
+}
+
+.security-events__state,
+.security-events__loading {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.security-events__state {
+  padding: 1.2rem;
+  border: 1px dashed var(--security-events-border-strong);
+  border-radius: 1.25rem;
+  background: rgb(255 255 255 / 76%);
+}
+
+.security-events__state strong {
+  color: var(--security-events-text);
+}
+
+.security-events__state--error {
+  border-color: rgb(180 35 24 / 24%);
+  border-style: solid;
+  background: rgb(180 35 24 / 6%);
+}
+
+.security-events__state--error strong,
+.security-events__state--error p {
+  color: var(--security-events-danger);
+}
+
+.security-events__loading {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.security-events__skeleton {
+  display: grid;
+  gap: 0.65rem;
+
+  padding: 1.15rem;
+  border: 1px solid var(--security-events-border);
+  border-radius: 1.15rem;
+
+  background: var(--security-events-surface);
+}
+
+.security-events__skeleton span {
+  display: block;
+
+  height: 0.9rem;
+  border-radius: 999px;
+
+  background: linear-gradient(90deg, #e7edf5 0%, #f8fbfd 50%, #e7edf5 100%);
+  background-size: 200% 100%;
+
+  animation: security-events-skeleton 1.6s linear infinite;
+}
+
+.security-events__skeleton span:nth-child(2) {
+  width: 78%;
+}
+
+.security-events__skeleton span:nth-child(3) {
+  width: 62%;
+}
+
+.security-events__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(19rem, 0.9fr);
+  gap: 1rem;
+}
+
+.security-events__row,
+.security-events__details-card {
+  display: grid;
+  gap: 1rem;
+
+  padding: 1.15rem;
+  border: 1px solid var(--security-events-border);
+  border-radius: 1.25rem;
+
+  background: var(--security-events-surface);
+}
+
+.security-events__row {
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.security-events__row:hover,
+.security-events__row:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--security-events-border-strong);
+  outline: none;
+  box-shadow: 0 14px 28px rgb(24 34 53 / 8%);
+}
+
+.security-events__row--selected {
+  border-color: rgb(14 116 144 / 42%);
+  box-shadow: 0 16px 30px rgb(14 116 144 / 12%);
+}
+
+.security-events__row--high-risk {
+  background:
+    linear-gradient(90deg, rgb(180 35 24 / 8%), transparent 16%), var(--security-events-surface);
+}
+
+.security-events__row--suspicious {
+  border-color: rgb(217 119 6 / 36%);
+  background:
+    linear-gradient(90deg, rgb(217 119 6 / 10%), transparent 18%),
+    var(--security-events-surface-alt);
+}
+
+.security-events__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.security-events__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 1.9rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--security-events-accent);
+  letter-spacing: 0.02em;
+
+  background: rgb(14 116 144 / 12%);
+}
+
+.security-events__badge[data-risk='medium'] {
+  color: var(--security-events-warning);
+  background: rgb(217 119 6 / 12%);
+}
+
+.security-events__badge[data-risk='high'] {
+  color: var(--security-events-danger);
+  background: rgb(180 35 24 / 12%);
+}
+
+.security-events__badge--suspicious {
+  color: var(--security-events-warning);
+  background: var(--security-events-warning-soft);
+}
+
+.security-events__grid,
+.security-events__changes,
+.security-events__meta {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.security-events__grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.security-events__details {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+}
+
+.security-events__details-card {
+  background:
+    radial-gradient(circle at top right, rgb(14 116 144 / 8%), transparent 38%),
+    var(--security-events-surface);
+}
+
+.security-events__details-card h3 {
+  margin: 0.35rem 0 0;
+  font-size: 1.1rem;
+}
+
+.security-events__meta div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.security-events__meta dt {
+  font-size: 0.82rem;
+}
+
+.security-events__meta dd {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.security-events__changes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.security-events__changes div {
+  display: grid;
+  gap: 0.5rem;
+
+  padding: 0.9rem;
+  border: 1px solid var(--security-events-border);
+  border-radius: 1rem;
+
+  background: rgb(255 255 255 / 82%);
+}
+
+.security-events__changes ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--security-events-text);
+}
+
+@keyframes security-events-skeleton {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (width <= 1180px) {
+  .security-events__actions,
+  .security-events__filters,
+  .security-events__grid,
+  .security-events__changes,
+  .security-events__layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .security-events__export,
+  .security-events__filter-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (width <= 760px) {
+  .security-events__header,
+  .security-events__row-top,
+  .security-events__row-meta,
+  .security-events__details-top {
+    flex-direction: column;
+  }
+
+  .security-events__actions,
+  .security-events__filters,
+  .security-events__grid,
+  .security-events__changes,
+  .security-events__layout,
+  .security-events__loading {
+    grid-template-columns: 1fr;
+  }
+
+  .security-events__badges {
+    justify-content: flex-start;
+  }
+
+  .security-events__details {
+    position: static;
+  }
+}

@@ -1,0 +1,236 @@
+<section class="security-events">
+  <header class="security-events__header">
+    <div class="security-events__copy">
+      <p class="security-events__eyebrow">Security monitoring</p>
+      <h2>События безопасности</h2>
+      <p>
+        Автономный блок для входов, блокировок, отказов в доступе и подозрительной активности без зависимости от
+        родительского `Monitoring`.
+      </p>
+    </div>
+
+    <div class="security-events__actions">
+      <article class="security-events__stat">
+        <span>В выборке</span>
+        <strong data-testid="total-count">{{ totalCountLabel() }}</strong>
+        <small>{{ activeFiltersSummary() }}</small>
+      </article>
+
+      <article class="security-events__stat security-events__stat--accent" data-testid="events-24h-badge">
+        <span>За 24ч</span>
+        <strong>{{ recentCountLabel() }}</strong>
+        <small>Относительно самой свежей записи в текущем фильтре</small>
+      </article>
+
+      <article class="security-events__stat security-events__stat--warning">
+        <span>Suspicious / high risk</span>
+        <strong data-testid="highlighted-count">{{ highlightedCountLabel() }}</strong>
+        <small>События с приоритетом на ручную проверку</small>
+      </article>
+
+      <button
+        type="button"
+        class="security-events__export"
+        data-testid="export-button"
+        [disabled]="!canExport()"
+        (click)="requestExport()">
+        Экспортировать
+      </button>
+    </div>
+  </header>
+
+  <form class="security-events__filters" (submit)="$event.preventDefault()">
+    <label class="security-events__field">
+      <span>IP</span>
+      <input
+        type="text"
+        data-testid="ip-filter"
+        placeholder="176.32.70.91"
+        [value]="filters().ip"
+        (input)="updateFilter('ip', $any($event.target).value)" />
+    </label>
+
+    <label class="security-events__field">
+      <span>Пользователь</span>
+      <input
+        type="text"
+        data-testid="user-filter"
+        placeholder="email, имя или id"
+        [value]="filters().user"
+        (input)="updateFilter('user', $any($event.target).value)" />
+    </label>
+
+    <label class="security-events__field">
+      <span>С даты</span>
+      <input
+        type="date"
+        data-testid="date-from-filter"
+        [value]="filters().dateFrom"
+        (input)="updateFilter('dateFrom', $any($event.target).value)" />
+    </label>
+
+    <label class="security-events__field">
+      <span>По дату</span>
+      <input
+        type="date"
+        data-testid="date-to-filter"
+        [value]="filters().dateTo"
+        (input)="updateFilter('dateTo', $any($event.target).value)" />
+    </label>
+
+    <div class="security-events__filter-actions">
+      <button type="button" class="security-events__reset" [disabled]="!hasActiveFilters()" (click)="resetFilters()">
+        Сбросить фильтры
+      </button>
+    </div>
+  </form>
+
+  @if (error(); as errorMessage) {
+  <div class="security-events__state security-events__state--error" role="alert" data-testid="error-state">
+    <strong>Не удалось загрузить security-события</strong>
+    <p>{{ errorMessage }}</p>
+  </div>
+  } @else if (loading()) {
+  <div class="security-events__loading" aria-live="polite" data-testid="loading-state">
+    @for (placeholder of [0, 1, 2]; track placeholder) {
+    <div class="security-events__skeleton">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    }
+  </div>
+  } @else if (!filteredEvents().length) {
+  <div class="security-events__state security-events__state--empty" data-testid="empty-state">
+    <strong>События не найдены</strong>
+    <p>Попробуйте ослабить фильтры по IP, пользователю или дате.</p>
+  </div>
+  } @else {
+  <div class="security-events__layout">
+    <div class="security-events__list" role="list">
+      @for (event of filteredEvents(); track event.id) {
+      <article
+        class="security-events__row"
+        [class.security-events__row--selected]="selectedEvent()?.id === event.id"
+        [class.security-events__row--high-risk]="event.security.riskLevel === 'high'"
+        [class.security-events__row--suspicious]="isSuspicious(event)"
+        [attr.data-event-id]="event.id"
+        data-testid="security-event-row"
+        tabindex="0"
+        role="button"
+        (click)="selectRow(event)"
+        (keydown.enter)="selectRow(event)"
+        (keydown.space)="$event.preventDefault(); selectRow(event)">
+        <div class="security-events__row-top">
+          <div class="security-events__row-copy">
+            <strong>{{ event.action.title }}</strong>
+            <p>{{ event.security.reason || event.action.subtitle || event.action.category }}</p>
+          </div>
+
+          <div class="security-events__row-meta">
+            <div class="security-events__badges">
+              <span class="security-events__badge" [attr.data-risk]="event.security.riskLevel">
+                {{ getRiskLabel(event.security.riskLevel) }}
+              </span>
+
+              @if (isSuspicious(event)) {
+              <span class="security-events__badge security-events__badge--suspicious">Suspicious</span>
+              }
+            </div>
+
+            <div class="security-events__timestamp">
+              <span>{{ event.display.dateLabel }}</span>
+              <strong>{{ event.display.timeLabel }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="security-events__grid">
+          <div>
+            <span>Пользователь</span>
+            <strong>{{ event.actor.name }}</strong>
+            <small>{{ event.actor.email }}</small>
+          </div>
+
+          <div>
+            <span>Сущность</span>
+            <strong>{{ event.entity.title }}</strong>
+            <small>{{ event.entity.label }} · {{ event.entity.id }}</small>
+          </div>
+
+          <div>
+            <span>Источник</span>
+            <strong>{{ event.source.name }}</strong>
+            <small>{{ event.source.location }} · {{ event.source.ipAddress }}</small>
+          </div>
+        </div>
+      </article>
+      }
+    </div>
+
+    <aside class="security-events__details">
+      @if (selectedEvent(); as event) {
+      <div class="security-events__details-card" data-testid="selected-event-details">
+        <div class="security-events__details-top">
+          <div>
+            <span class="security-events__details-label">Выбранное событие</span>
+            <h3>{{ event.action.title }}</h3>
+          </div>
+
+          <div class="security-events__badges">
+            <span class="security-events__badge" [attr.data-risk]="event.security.riskLevel">
+              {{ getRiskLabel(event.security.riskLevel) }}
+            </span>
+
+            @if (isSuspicious(event)) {
+            <span class="security-events__badge security-events__badge--suspicious">Suspicious</span>
+            }
+          </div>
+        </div>
+
+        <dl class="security-events__meta">
+          <div>
+            <dt>Когда</dt>
+            <dd>{{ event.display.dateLabel }}, {{ event.display.timeLabel }}</dd>
+          </div>
+          <div>
+            <dt>IP</dt>
+            <dd>{{ event.source.ipAddress }}</dd>
+          </div>
+          <div>
+            <dt>Пользователь</dt>
+            <dd>{{ event.actor.name }} · {{ event.actor.email }}</dd>
+          </div>
+          <div>
+            <dt>Причина</dt>
+            <dd>{{ event.security.reason || 'Комментарий не указан' }}</dd>
+          </div>
+        </dl>
+
+        @if (hasChanges(event)) {
+        <div class="security-events__changes">
+          <div>
+            <span>До</span>
+            <ul>
+              @for (change of event.changes.before; track $index) {
+              <li>{{ change }}</li>
+              }
+            </ul>
+          </div>
+
+          <div>
+            <span>После</span>
+            <ul>
+              @for (change of event.changes.after; track $index) {
+              <li>{{ change }}</li>
+              }
+            </ul>
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </aside>
+  </div>
+  }
+</section>

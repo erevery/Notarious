@@ -1,0 +1,79 @@
+<section class="admin-notifications">
+  <header class="admin-notifications__hero">
+    <div class="admin-notifications__hero-copy">
+      <p class="admin-notifications__eyebrow">Администратор / уведомления</p>
+      <h2 data-testid="notifications-title">Уведомления</h2>
+      <p class="admin-notifications__lead">
+        Управление каналами и шаблонами уведомлений. Включение и отключение работают локально в рамках текущего сеанса.
+      </p>
+    </div>
+  </header>
+
+  <section class="admin-notifications__stats" aria-label="Сводка по уведомлениям">
+    <article class="admin-notifications__stat">
+      <span>Всего каналов</span>
+      <strong>{{ notifications().length }}</strong>
+      <small>Настроенных уведомлений</small>
+    </article>
+
+    <article class="admin-notifications__stat" [attr.data-tone]="enabledCount() ? 'success' : 'neutral'">
+      <span>Активных</span>
+      <strong>{{ enabledCount() }}</strong>
+      <small>Включенных уведомлений</small>
+    </article>
+  </section>
+
+  <article class="admin-notifications__card">
+    <div class="admin-notifications__card-header">
+      <h3>Каналы уведомлений</h3>
+      <p>Переключайте статус уведомления по строке. Изменения применяются локально.</p>
+    </div>
+
+    <div class="admin-notifications__table-wrap">
+      <table class="admin-notifications__table">
+        <thead>
+          <tr>
+            <th>Канал</th>
+            <th>Тема</th>
+            <th>Триггер</th>
+            <th>Статус</th>
+            <th>Последний запуск</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody data-testid="notifications-body">
+          @for (row of notifications(); track row.id) {
+          <tr>
+            <td>
+              <span class="admin-notifications__channel-badge" [attr.data-tone]="channelBadgeTone(row.channel)">
+                {{ channelLabels[row.channel] }}
+              </span>
+            </td>
+            <td>{{ row.subject }}</td>
+            <td>{{ row.trigger }}</td>
+            <td>
+              <span
+                class="admin-notifications__status-badge"
+                [attr.data-tone]="row.status === 'enabled' ? 'success' : 'neutral'">
+                {{ row.status === 'enabled' ? 'Включено' : 'Отключено' }}
+              </span>
+            </td>
+            <td>{{ row.lastFiredAt ?? '—' }}</td>
+            <td>
+              <button type="button" class="admin-notifications__toggle-btn" (click)="toggleNotification(row.id)">
+                {{ row.status === 'enabled' ? 'Отключить' : 'Включить' }}
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (statusMessage()) {
+    <div class="admin-notifications__message">
+      <small>{{ statusMessage() }}</small>
+    </div>
+    }
+  </article>
+</section>

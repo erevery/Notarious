@@ -1,0 +1,203 @@
+@let currentUser = user();
+
+<section class="admin-user-detail">
+  <header class="admin-user-detail__hero">
+    <div class="admin-user-detail__hero-copy">
+      <p class="admin-user-detail__eyebrow">Администратор / пользователи / {{ currentUser.id }}</p>
+      <h2 data-testid="user-detail-title">{{ currentUser.fullName }}</h2>
+      <p class="admin-user-detail__lead">
+        Реальная карточка пользователя для `/admin/users/:id` с встраиванием user-аудита и security-событий напрямую в
+        detail-screen.
+      </p>
+    </div>
+
+    <div class="admin-user-detail__hero-actions">
+      <a class="admin-user-detail__link" routerLink="/admin/users">К списку пользователей</a>
+      <a class="admin-user-detail__link admin-user-detail__link--accent" routerLink="/admin/monitoring">
+        Общий monitoring
+      </a>
+    </div>
+  </header>
+
+  <section class="admin-user-detail__stats" aria-label="Сводка по пользователю">
+    <article class="admin-user-detail__stat" [attr.data-tone]="statusTone()">
+      <span>Статус доступа</span>
+      <strong>{{ statusLabel() }}</strong>
+      <small>{{ currentUser.lastSeenAt }}</small>
+    </article>
+
+    <article class="admin-user-detail__stat">
+      <span>Текущая роль</span>
+      <strong>{{ currentRole() }}</strong>
+      <small>Локальный override без backend-mutation</small>
+    </article>
+
+    <article class="admin-user-detail__stat">
+      <span>Подписка</span>
+      <strong>{{ currentUser.subscription.planName }}</strong>
+      <small>{{ currentUser.subscription.statusLabel }}</small>
+    </article>
+
+    <article class="admin-user-detail__stat">
+      <span>Заявки</span>
+      <strong>{{ totalOrderLabel() }}</strong>
+      <small>{{ securitySummary() }}</small>
+    </article>
+  </section>
+
+  <section class="admin-user-detail__overview">
+    <article class="admin-user-detail__card">
+      <div class="admin-user-detail__card-header">
+        <div>
+          <h3>Профиль</h3>
+          <p>{{ currentUser.note }}</p>
+        </div>
+        <span class="admin-user-detail__badge" [attr.data-tone]="statusTone()">{{ statusLabel() }}</span>
+      </div>
+
+      <dl class="admin-user-detail__profile-grid">
+        <div>
+          <dt>ID</dt>
+          <dd>{{ currentUser.id }}</dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd>{{ currentUser.email }}</dd>
+        </div>
+        <div>
+          <dt>Телефон</dt>
+          <dd>{{ currentUser.phone }}</dd>
+        </div>
+        <div>
+          <dt>Город</dt>
+          <dd>{{ currentUser.city }}</dd>
+        </div>
+        <div>
+          <dt>Дата регистрации</dt>
+          <dd>{{ currentUser.registeredAt }}</dd>
+        </div>
+        <div>
+          <dt>Последняя активность</dt>
+          <dd>{{ currentUser.lastSeenAt }}</dd>
+        </div>
+      </dl>
+
+      <div class="admin-user-detail__tags">
+        @for (tag of currentUser.tags; track tag) {
+        <span>{{ tag }}</span>
+        }
+      </div>
+    </article>
+
+    <article class="admin-user-detail__card">
+      <div class="admin-user-detail__card-header">
+        <div>
+          <h3>Действия администратора</h3>
+          <p>{{ statusMessage() }}</p>
+        </div>
+      </div>
+
+      <div class="admin-user-detail__controls">
+        <label class="admin-user-detail__field">
+          <span>Роль</span>
+          <select [value]="currentRole()" (change)="updateRole($any($event.target).value)">
+            @for (role of roleOptions; track role) {
+            <option [value]="role">{{ role }}</option>
+            }
+          </select>
+        </label>
+
+        <div class="admin-user-detail__button-row">
+          <button
+            type="button"
+            class="admin-user-detail__button admin-user-detail__button--primary"
+            (click)="toggleBlocked()">
+            {{ isBlocked() ? 'Разблокировать' : 'Заблокировать' }}
+          </button>
+          <button type="button" class="admin-user-detail__button" (click)="resetLocalState()">Сбросить локально</button>
+        </div>
+      </div>
+
+      <div class="admin-user-detail__subscription">
+        <div>
+          <span>Подписка</span>
+          <strong>{{ currentUser.subscription.planName }}</strong>
+        </div>
+        <div>
+          <span>Состояние</span>
+          <strong>{{ currentUser.subscription.statusLabel }}</strong>
+        </div>
+        <div>
+          <span>Продление</span>
+          <strong>{{ currentUser.subscription.renewAt }}</strong>
+        </div>
+        <div>
+          <span>Объем</span>
+          <strong>{{ currentUser.subscription.volumeLabel }}</strong>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <article class="admin-user-detail__card">
+    <div class="admin-user-detail__card-header">
+      <div>
+        <h3>Заявки пользователя</h3>
+        <p>Даже до реального API на detail-screen уже видно маршрутные связи и переход к `/admin/orders/:id`.</p>
+      </div>
+    </div>
+
+    @if (currentUser.orders.length) {
+    <div class="admin-user-detail__table-wrap">
+      <table class="admin-user-detail__table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Адрес</th>
+            <th>Статус</th>
+            <th>Создана</th>
+            <th>Сумма</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of currentUser.orders; track order.id) {
+          <tr>
+            <td>{{ order.id }}</td>
+            <td>{{ order.address }}</td>
+            <td>{{ order.statusLabel }}</td>
+            <td>{{ order.createdAt }}</td>
+            <td>{{ order.amountLabel }}</td>
+            <td>
+              <a [routerLink]="['/admin/orders', order.id]">Открыть заявку</a>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="admin-user-detail__empty">
+      <strong>Связанных заявок пока нет.</strong>
+      <p>Маршрут detail-screen уже готов, но для этого demo-id список заказов пуст.</p>
+    </div>
+    }
+  </article>
+
+  <lib-user-logs-panel
+    [events]="auditEvents"
+    [loading]="false"
+    [error]="null"
+    [entityId]="currentUser.id"
+    [entityEmail]="currentUser.email"
+    (eventSelected)="handleAuditSelection($event)"
+    (exportRequested)="handleAuditExport($event)"></lib-user-logs-panel>
+
+  <lib-security-events
+    [events]="securityContextEvents()"
+    [loading]="false"
+    [error]="null"
+    (rowSelected)="handleSecuritySelection($event)"
+    (filtersChanged)="handleSecurityFiltersChanged($event)"
+    (exportRequested)="handleSecurityExport($event)"></lib-security-events>
+</section>

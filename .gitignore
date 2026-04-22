@@ -62,3 +62,6 @@ yarn.lock
 # Tests and logs
 test-results/
 .pnpm-debug.log*
+
+# Nx worktrees from Claude Code sessions
+.claude/worktrees/

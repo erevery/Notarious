@@ -9,7 +9,7 @@ assignees: ['SuperLuchito']
 Интерфейс аудита действий в панели администратора: хронологическая лента событий (кто/что/когда), фильтрация, экспорт.
 
 > **Разработчики:** Нибылицын Лукьян (SuperLuchito) — лента аудита, фильтры, экспорт.  
-> Черненко Дмитрий (getpaintoo) (issue-23) — просмотр логов по пользователю/заказу, события безопасности.
+> Черненко Дмитрий (getpaintoo) (issue-23) — этап 1: автономные компоненты в `libs/web/admin/src/lib/features/monitoring/`; этап 2: встраивание в `MonitoringComponent` или карточки пользователя/заказа.
 
 ## Затронутые роли
 
@@ -28,7 +28,9 @@ assignees: ['SuperLuchito']
 
 - Маршруты: `/admin/monitoring`, `/notary/monitoring` (ограниченный вид)
 - Защита: `roleGuard(UserRole.Admin)` / `roleGuard(UserRole.Notary)`
-- RPC: `AuditService` (согласовать с бэкендом — proto существует: `audit_pb.ts`)
+- На текущей frontend-итерации работаем только от mock-данных и не блокируемся на backend/API-интеграции audit
+- D10 (`AuditService`/`AuditLogService` backend integration) выделен в отдельный этап после фронтовой подготовки:
+  отсутствуют `audit.proto`, `libs/api/audit` и регистрация в `apps/api/src/app/connect-router.registry.ts`
 - Серверная пагинация, debounced-фильтры
 - Экспорт CSV: формировать на клиенте из полученных данных (`Blob`) или запрашивать у бэкенда
 
@@ -43,5 +45,5 @@ assignees: ['SuperLuchito']
 ## Связанные файлы
 
 - `libs/web/admin/src/lib/features/monitoring/`
-- Proto: `libs/shared/api-contracts/src/` (`audit_pb.ts`)
+- Backend prerequisites для D10 пока отсутствуют: `audit.proto`, `libs/api/audit`, `apps/api/src/app/connect-router.registry.ts`
 - Зависимость: issue-23 (Черненко Дмитрий — детальные логи)

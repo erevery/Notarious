@@ -9,18 +9,39 @@
     </div>
 
     <div class="admin-page__actions">
+      @if (currentTab() === 'all') {
       <button type="button" class="admin-btn admin-btn--ghost" (click)="resetFilters()">Сбросить фильтры</button>
+      } @else if (currentTab() === 'by-entity') {
+      <button type="button" class="admin-btn admin-btn--ghost" (click)="clearEntityFilters()">Сбросить контекст</button>
+      } @else {
+      <button type="button" class="admin-btn admin-btn--ghost" (click)="setTab('all')">Все события</button>
+      }
+
       <button type="button" class="admin-btn admin-btn--secondary" (click)="refresh()">Обновить</button>
+
+      @if (currentTab() === 'all') {
       <button type="button" class="admin-btn admin-btn--primary" (click)="exportCsv()">Экспорт CSV</button>
+      }
     </div>
   </header>
 
   <section class="admin-toolbar">
     <div class="admin-toolbar__copy">
-      <p>Показаны события за последние 30 дней. Экспорт выгружает только текущую отфильтрованную выборку.</p>
-      <small class="admin-toolbar__status">{{ statusMessage() }}</small>
+      <p>{{ toolbarDescription() }}</p>
+      <small class="admin-toolbar__status">{{ statusMessage() }} · Последнее обновление: {{ lastUpdated() }}</small>
     </div>
-    <span class="admin-toolbar__meta">Последнее обновление: {{ lastUpdated() }}</span>
+
+    <div class="admin-chipset" aria-label="Вкладки мониторинга">
+      @for (tab of tabOptions; track tab.id) {
+      <button
+        type="button"
+        class="admin-chip"
+        [class.admin-chip--active]="currentTab() === tab.id"
+        (click)="setTab(tab.id)">
+        {{ tab.label }}
+      </button>
+      }
+    </div>
   </section>
 
   @let summary = stats();
@@ -80,6 +101,7 @@
 
   <section class="monitoring-layout">
     <div class="monitoring-main">
+      @switch (currentTab()) { @case ('all') {
       <article class="admin-card">
         <div class="admin-card__header">
           <div>
@@ -209,57 +231,57 @@
             <div class="monitoring-log__top">
               <div class="monitoring-log__headline">
                 <div class="monitoring-log__title-wrap">
-                  <strong>{{ event.actionTitle }}</strong>
-                  <p>{{ event.actionSubtitle }}</p>
+                  <strong>{{ event.action.title }}</strong>
+                  <p>{{ event.action.subtitle }}</p>
                 </div>
 
                 <div class="monitoring-log__badges">
                   <span
                     class="admin-badge"
-                    [class.admin-badge--critical]="event.severity === 'critical'"
-                    [class.admin-badge--warning]="event.severity === 'warning'"
-                    [class.admin-badge--info]="event.severity === 'info'"
-                    [class.admin-badge--success]="event.severity === 'success'">
-                    {{ event.severityLabel }}
+                    [class.admin-badge--critical]="event.severity.level === 'critical'"
+                    [class.admin-badge--warning]="event.severity.level === 'warning'"
+                    [class.admin-badge--info]="event.severity.level === 'info'"
+                    [class.admin-badge--success]="event.severity.level === 'success'">
+                    {{ event.severity.label }}
                   </span>
 
-                  @if (event.security) {
+                  @if (event.security.isSecurityEvent) {
                   <span class="admin-badge admin-badge--neutral">Security</span>
                   }
                 </div>
               </div>
 
               <div class="monitoring-log__timestamp">
-                <span>{{ event.dateLabel }}</span>
-                <strong>{{ event.timeLabel }}</strong>
+                <span>{{ event.display.dateLabel }}</span>
+                <strong>{{ event.display.timeLabel }}</strong>
               </div>
             </div>
 
             <div class="monitoring-log__grid">
               <div class="monitoring-log__cell">
                 <span class="monitoring-log__label">Пользователь</span>
-                <strong>{{ event.actor }}</strong>
-                <small>{{ event.actorEmail }}</small>
+                <strong>{{ event.actor.name }}</strong>
+                <small>{{ event.actor.email }}</small>
               </div>
 
               <div class="monitoring-log__cell">
                 <span class="monitoring-log__label">Объект</span>
-                <strong>{{ event.entityTitle }}</strong>
-                <small>{{ event.entitySubtitle }}</small>
+                <strong>{{ event.entity.title }}</strong>
+                <small>{{ event.entity.subtitle }}</small>
               </div>
 
               <div class="monitoring-log__cell">
                 <span class="monitoring-log__label">Источник</span>
-                <strong>{{ event.source }}</strong>
-                <small>{{ event.location }}</small>
+                <strong>{{ event.source.name }}</strong>
+                <small>{{ event.source.location }}</small>
               </div>
 
               <div class="monitoring-log__cell">
                 <span class="monitoring-log__label">Контекст</span>
                 <div class="monitoring-log__meta-chips">
-                  <span>{{ event.role }}</span>
-                  <span>{{ event.object }}</span>
-                  <span>{{ event.ip }}</span>
+                  <span>{{ event.actor.role }}</span>
+                  <span>{{ event.entity.label }}</span>
+                  <span>{{ event.source.ipAddress }}</span>
                 </div>
               </div>
             </div>
@@ -268,7 +290,7 @@
             <div class="monitoring-log__expand">
               <div class="monitoring-log__expand-copy">
                 <strong>Комментарий к событию</strong>
-                <p>{{ event.reason }}</p>
+                <p>{{ event.security.reason }}</p>
               </div>
               <button type="button" class="admin-link" (click)="selectEvent(event.id); $event.stopPropagation()">
                 Подсветить в боковой панели
@@ -288,6 +310,93 @@
         </div>
         }
       </article>
+      } @case ('by-entity') {
+      <article class="admin-card">
+        <div class="admin-card__header">
+          <div>
+            <h3>Контекст by-entity</h3>
+            <p>{{ entityContextSummary() }}</p>
+          </div>
+
+          <div class="admin-page__actions">
+            <button
+              type="button"
+              class="admin-btn admin-btn--ghost"
+              [disabled]="!canApplySelectedUserContext()"
+              (click)="applySelectedUserContext()">
+              Пользователь из выделения
+            </button>
+            <button
+              type="button"
+              class="admin-btn admin-btn--secondary"
+              [disabled]="!canApplySelectedOrderContext()"
+              (click)="applySelectedOrderContext()">
+              Заказ из выделения
+            </button>
+          </div>
+        </div>
+
+        <form class="monitoring-filters" (submit)="$event.preventDefault()">
+          <label class="admin-field monitoring-field monitoring-field--search">
+            <span>User ID</span>
+            <input
+              type="text"
+              placeholder="user-1942"
+              [value]="entityFilters().userId"
+              (input)="updateEntityFilter('userId', $any($event.target).value)" />
+          </label>
+
+          <label class="admin-field monitoring-field monitoring-field--type">
+            <span>Email</span>
+            <input
+              type="text"
+              placeholder="admin@notary.local"
+              [value]="entityFilters().userEmail"
+              (input)="updateEntityFilter('userEmail', $any($event.target).value)" />
+          </label>
+
+          <label class="admin-field monitoring-field monitoring-field--object">
+            <span>Order ID</span>
+            <input
+              type="text"
+              placeholder="A-88349"
+              [value]="entityFilters().orderId"
+              (input)="updateEntityFilter('orderId', $any($event.target).value)" />
+          </label>
+
+          <div class="monitoring-filters__actions">
+            <button type="button" class="admin-btn admin-btn--ghost" (click)="clearEntityFilters()">
+              Очистить контекст
+            </button>
+          </div>
+        </form>
+      </article>
+
+      <lib-user-logs-panel
+        [events]="auditEvents"
+        [loading]="false"
+        [error]="null"
+        [entityId]="entityFilters().userId || undefined"
+        [entityEmail]="entityFilters().userEmail || undefined"
+        (eventSelected)="selectIntegratedEvent($event)"
+        (exportRequested)="handleEntityExportRequested($event)"></lib-user-logs-panel>
+
+      <lib-order-logs-panel
+        [events]="auditEvents"
+        [loading]="false"
+        [error]="null"
+        [entityId]="entityFilters().orderId || undefined"
+        (eventSelected)="selectIntegratedEvent($event)"
+        (exportRequested)="handleEntityExportRequested($event)"></lib-order-logs-panel>
+      } @case ('security') {
+      <lib-security-events
+        [events]="auditEvents"
+        [loading]="false"
+        [error]="null"
+        (rowSelected)="selectIntegratedEvent($event)"
+        (filtersChanged)="handleSecurityFiltersChanged($event)"
+        (exportRequested)="handleSecurityExportRequested($event)"></lib-security-events>
+      } }
     </div>
 
     <aside class="monitoring-side">
@@ -302,61 +411,66 @@
         @if (selectedEvent(); as current) {
         <div class="monitoring-details">
           <div class="monitoring-details__headline">
-            <strong>{{ current.actionTitle }}</strong>
+            <strong>{{ current.action.title }}</strong>
             <span
               class="admin-badge"
-              [class.admin-badge--critical]="current.severity === 'critical'"
-              [class.admin-badge--warning]="current.severity === 'warning'"
-              [class.admin-badge--info]="current.severity === 'info'"
-              [class.admin-badge--success]="current.severity === 'success'">
-              {{ current.severityLabel }}
+              [class.admin-badge--critical]="current.severity.level === 'critical'"
+              [class.admin-badge--warning]="current.severity.level === 'warning'"
+              [class.admin-badge--info]="current.severity.level === 'info'"
+              [class.admin-badge--success]="current.severity.level === 'success'">
+              {{ current.severity.label }}
             </span>
           </div>
 
           <dl class="monitoring-meta">
             <div>
               <dt>Кто</dt>
-              <dd>{{ current.actor }}</dd>
+              <dd>{{ current.actor.name }}</dd>
             </div>
             <div>
               <dt>Когда</dt>
-              <dd>{{ current.dateLabel }}, {{ current.timeLabel }}</dd>
+              <dd>{{ current.display.dateLabel }}, {{ current.display.timeLabel }}</dd>
             </div>
             <div>
               <dt>Где</dt>
-              <dd>{{ current.location }}</dd>
+              <dd>{{ current.source.location }}</dd>
             </div>
             <div>
               <dt>Объект</dt>
-              <dd>{{ current.entityTitle }}</dd>
+              <dd>{{ current.entity.title }}</dd>
             </div>
             <div>
               <dt>IP / канал</dt>
-              <dd>{{ current.ip }} / {{ current.source }}</dd>
+              <dd>{{ current.source.ipAddress }} / {{ current.source.name }}</dd>
             </div>
             <div>
               <dt>Причина</dt>
-              <dd>{{ current.reason }}</dd>
+              <dd>{{ current.security.reason }}</dd>
             </div>
           </dl>
 
           <div class="monitoring-diff">
             <div class="monitoring-diff__column">
               <span class="monitoring-diff__label">Было</span>
-              <pre>{{ current.before.join('\n') }}</pre>
+              <pre>{{ current.changes.before.join('\n') }}</pre>
             </div>
 
             <div class="monitoring-diff__column monitoring-diff__column--new">
               <span class="monitoring-diff__label">Стало</span>
-              <pre>{{ current.after.join('\n') }}</pre>
+              <pre>{{ current.changes.after.join('\n') }}</pre>
             </div>
           </div>
 
           <div class="monitoring-note">
             <strong>Комментарий:</strong>
-            {{ current.actionSubtitle }}. Событие сохранено как демонстрационный сценарий для будущей интеграции с
+            {{ current.action.subtitle }}. Событие сохранено как демонстрационный сценарий для будущей интеграции с
             настоящим audit trail.
           </div>
+        </div>
+        } @else {
+        <div class="monitoring-empty">
+          <strong>Событие не выбрано.</strong>
+          <p>Выбери запись в любой вкладке, чтобы боковая панель показала canonical detail view.</p>
         </div>
         }
       </article>
@@ -369,18 +483,25 @@
           </div>
         </div>
 
+        @if (securityHighlights().length) {
         <ul class="monitoring-alerts">
           @for (event of securityHighlights(); track event.id) {
           <li
             class="monitoring-alert"
-            [class.monitoring-alert--critical]="event.severity === 'critical'"
-            [class.monitoring-alert--warning]="event.severity === 'warning'"
-            [class.monitoring-alert--info]="event.severity === 'info'">
-            <strong>{{ event.actionTitle }}</strong>
-            <span>{{ event.entityTitle }}, {{ event.dateLabel }}, {{ event.timeLabel }}</span>
+            [class.monitoring-alert--critical]="event.severity.level === 'critical'"
+            [class.monitoring-alert--warning]="event.severity.level === 'warning'"
+            [class.monitoring-alert--info]="event.severity.level === 'info'">
+            <strong>{{ event.action.title }}</strong>
+            <span>{{ event.entity.title }}, {{ event.display.dateLabel }}, {{ event.display.timeLabel }}</span>
           </li>
           }
         </ul>
+        } @else {
+        <div class="monitoring-empty">
+          <strong>Событий безопасности в текущем контексте нет.</strong>
+          <p>Смени вкладку или ослабь фильтры, чтобы вернуть security-highlight блок.</p>
+        </div>
+        }
       </article>
     </aside>
   </section>

@@ -1,0 +1,67 @@
+<section class="admin-statistics">
+  <header class="admin-statistics__hero">
+    <div class="admin-statistics__hero-copy">
+      <p class="admin-statistics__eyebrow">Администратор / статистика</p>
+      <h2 data-testid="statistics-title">Метрики и отчёты</h2>
+      <p class="admin-statistics__lead">
+        Ключевые показатели работы портала и доступные отчёты. Данные актуальны по состоянию на текущий сеанс.
+      </p>
+    </div>
+  </header>
+
+  <section class="admin-statistics__metrics" aria-label="Ключевые метрики">
+    @for (metric of metrics; track metric.label; let i = $index) {
+    <article class="admin-statistics__metric" [attr.data-tone]="metricTone(i)">
+      <span class="admin-statistics__metric-label">{{ metric.label }}</span>
+      <strong class="admin-statistics__metric-value">{{ metric.value }}</strong>
+      <small class="admin-statistics__metric-trend">{{ metric.trend }}</small>
+    </article>
+    }
+  </section>
+
+  <article class="admin-statistics__card">
+    <div class="admin-statistics__card-header">
+      <h3>Последние отчёты</h3>
+      <p>Последние 10 отчётов, доступных для скачивания.</p>
+    </div>
+
+    @if (recentReports().length) {
+    <div class="admin-statistics__table-wrap">
+      <table class="admin-statistics__table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Период</th>
+            <th>Автор</th>
+            <th>Размер</th>
+            <th>Дата</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody data-testid="statistics-body">
+          @for (row of recentReports(); track row.id) {
+          <tr>
+            <td>{{ row.id }}</td>
+            <td>{{ row.name }}</td>
+            <td>{{ row.period }}</td>
+            <td>{{ row.author }}</td>
+            <td>{{ row.sizeLabel }}</td>
+            <td>{{ row.createdAt }}</td>
+            <td>
+              <button type="button" class="admin-statistics__download-btn" (click)="downloadReport(row.id)">
+                Скачать
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @if (statusMessage()) {
+    <div class="admin-statistics__message">
+      <small>{{ statusMessage() }}</small>
+    </div>
+    }
+  </article>
+</section>

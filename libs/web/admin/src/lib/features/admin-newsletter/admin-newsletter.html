@@ -1,0 +1,99 @@
+<section class="admin-newsletter">
+  <header class="admin-newsletter__hero">
+    <div class="admin-newsletter__hero-copy">
+      <p class="admin-newsletter__eyebrow">Администратор / рассылка</p>
+      <h2 data-testid="newsletter-title">Рассылка</h2>
+      <p class="admin-newsletter__lead">
+        Создание email-рассылок для пользователей портала. Черновик сохраняется локально в рамках текущего сеанса.
+      </p>
+    </div>
+  </header>
+
+  <article class="admin-newsletter__card">
+    <div class="admin-newsletter__card-header">
+      <h3>Новая рассылка</h3>
+      <p>Заполните форму, чтобы сформировать черновик письма.</p>
+    </div>
+
+    <div class="admin-newsletter__form">
+      <label class="admin-newsletter__field">
+        <span>Тема письма</span>
+        <input
+          type="text"
+          placeholder="Введите тему рассылки"
+          [value]="subject()"
+          (input)="updateSubject($any($event.target).value)"
+          data-testid="newsletter-subject" />
+      </label>
+
+      <label class="admin-newsletter__field">
+        <span>Сегмент получателей</span>
+        <select [value]="segment()" (change)="updateSegment($any($event.target).value)">
+          @for (opt of segmentOptions; track opt) {
+          <option [value]="opt">{{ labelForSegment(opt) }}</option>
+          }
+        </select>
+        <small class="admin-newsletter__segment-note"> Получателей: <strong>{{ segmentCount() }}</strong> </small>
+      </label>
+
+      <label class="admin-newsletter__field">
+        <span>Текст письма</span>
+        <textarea
+          rows="8"
+          placeholder="Введите текст рассылки"
+          [value]="body()"
+          (input)="updateBody($any($event.target).value)"
+          data-testid="newsletter-body"></textarea>
+      </label>
+    </div>
+
+    <div class="admin-newsletter__preview-block">
+      <h4 class="admin-newsletter__preview-title">Предпросмотр</h4>
+      <pre class="admin-newsletter__preview" data-testid="newsletter-preview">{{ preview() }}</pre>
+    </div>
+
+    <div class="admin-newsletter__actions">
+      <button type="button" class="admin-newsletter__btn admin-newsletter__btn--primary" (click)="saveDraft()">
+        Сохранить черновик
+      </button>
+    </div>
+
+    @if (savedMessage()) {
+    <div class="admin-newsletter__message">
+      <small>{{ savedMessage() }}</small>
+    </div>
+    }
+  </article>
+
+  <article class="admin-newsletter__card">
+    <div class="admin-newsletter__card-header">
+      <h3>Последние рассылки</h3>
+      <p>История отправленных email-рассылок.</p>
+    </div>
+
+    <div class="admin-newsletter__table-wrap">
+      <table class="admin-newsletter__table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Тема</th>
+            <th>Сегмент</th>
+            <th>Получателей</th>
+            <th>Отправлено</th>
+          </tr>
+        </thead>
+        <tbody data-testid="newsletter-history-body">
+          @for (email of sentEmails(); track email.id) {
+          <tr>
+            <td>{{ email.id }}</td>
+            <td>{{ email.subject }}</td>
+            <td>{{ labelForSegment(email.segment) }}</td>
+            <td>{{ email.recipientCount }}</td>
+            <td>{{ email.sentAt }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
