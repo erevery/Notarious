@@ -1,0 +1,86 @@
+<section class="admin-settings">
+  <header class="admin-settings__hero">
+    <div class="admin-settings__hero-copy">
+      <p class="admin-settings__eyebrow">Администратор / настройки</p>
+      <h2 data-testid="settings-title">Настройки системы</h2>
+      <p class="admin-settings__lead">Конфигурация портала. Сохранение работает локально в рамках текущего сеанса.</p>
+    </div>
+  </header>
+
+  <article class="admin-settings__card">
+    <div class="admin-settings__card-header">
+      <h3>Конфигурация</h3>
+      <p>Основные параметры работы нотариального портала.</p>
+    </div>
+
+    <form class="admin-settings__form" (submit)="$event.preventDefault()">
+      <label class="admin-settings__field">
+        <span>Название портала</span>
+        <input
+          type="text"
+          [value]="settings().portalName"
+          (input)="updateField('portalName', $any($event.target).value)"
+          data-testid="settings-portal-name" />
+      </label>
+
+      <label class="admin-settings__field">
+        <span>SLA-порог (часы)</span>
+        <input
+          type="number"
+          [value]="settings().slaThresholdHours"
+          (input)="updateField('slaThresholdHours', +$any($event.target).value)"
+          data-testid="settings-sla-threshold" />
+      </label>
+
+      <label class="admin-settings__field">
+        <span>Дневной лимит заявок</span>
+        <input
+          type="number"
+          [value]="settings().dailyOrderLimit"
+          (input)="updateField('dailyOrderLimit', +$any($event.target).value)"
+          data-testid="settings-daily-limit" />
+      </label>
+
+      <label class="admin-settings__field">
+        <span>Email поддержки</span>
+        <input
+          type="email"
+          [value]="settings().supportEmail"
+          (input)="updateField('supportEmail', $any($event.target).value)"
+          data-testid="settings-support-email" />
+      </label>
+
+      <label class="admin-settings__field admin-settings__field--toggle">
+        <span>Режим технических работ</span>
+        <input
+          type="checkbox"
+          [checked]="settings().maintenanceMode"
+          (change)="updateField('maintenanceMode', $any($event.target).checked)"
+          data-testid="settings-maintenance-toggle" />
+        <small class="admin-settings__toggle-note">
+          {{ settings().maintenanceMode ? 'Включен — портал временно недоступен для пользователей' : 'Выключен — портал
+          работает в штатном режиме' }}
+        </small>
+      </label>
+
+      <div class="admin-settings__actions">
+        <button
+          type="button"
+          class="admin-settings__btn admin-settings__btn--primary"
+          [disabled]="!hasChanges()"
+          (click)="saveLocally()">
+          Сохранить локально
+        </button>
+        <button type="button" class="admin-settings__btn admin-settings__btn--secondary" (click)="resetSettings()">
+          Сбросить
+        </button>
+      </div>
+
+      @if (savedMessage()) {
+      <div class="admin-settings__message">
+        <small>{{ savedMessage() }}</small>
+      </div>
+      }
+    </form>
+  </article>
+</section>
