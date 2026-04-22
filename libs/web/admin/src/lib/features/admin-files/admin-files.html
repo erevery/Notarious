@@ -1,0 +1,130 @@
+<section class="admin-files">
+  <header class="admin-files__hero">
+    <div class="admin-files__hero-copy">
+      <p class="admin-files__eyebrow">Администратор / файлы</p>
+      <h2 data-testid="files-title">Модерация файлов</h2>
+      <p class="admin-files__lead">
+        Проверка загруженных файлов перед утверждением. Одобрение и отклонение работают локально в рамках текущего
+        сеанса.
+      </p>
+    </div>
+
+    <div class="admin-files__hero-actions">
+      <a class="admin-files__link" routerLink="/admin/orders">К заявкам</a>
+      <a class="admin-files__link admin-files__link--accent" routerLink="/admin/users">К пользователям</a>
+    </div>
+  </header>
+
+  <section class="admin-files__stats" aria-label="Сводка по файлам">
+    <article class="admin-files__stat" [attr.data-tone]="pendingCount() ? 'accent' : 'neutral'">
+      <span>На модерации</span>
+      <strong>{{ pendingCount() }}</strong>
+      <small>Файлов ожидают проверки</small>
+    </article>
+
+    <article class="admin-files__stat">
+      <span>Всего в каталоге</span>
+      <strong>{{ files().length }}</strong>
+      <small>Загруженных файлов</small>
+    </article>
+  </section>
+
+  <article class="admin-files__card">
+    <div class="admin-files__card-header">
+      <div>
+        <h3>Каталог файлов</h3>
+        <p>Поиск по имени и фильтр по статусу работают локально до подключения backend.</p>
+      </div>
+    </div>
+
+    <div class="admin-files__filters">
+      <label class="admin-files__field">
+        <span>Поиск</span>
+        <input
+          type="search"
+          placeholder="Имя файла, ID, пользователь"
+          [value]="searchQuery()"
+          (input)="updateSearch($any($event.target).value)"
+          data-testid="files-search" />
+      </label>
+
+      <label class="admin-files__field">
+        <span>Статус</span>
+        <select [value]="statusFilter()" (change)="updateStatusFilter($any($event.target).value)">
+          @for (option of statusOptions; track option) {
+          <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </label>
+
+      <button type="button" class="admin-files__button" (click)="resetFilters()">Сбросить</button>
+    </div>
+
+    @if (filteredFiles().length) {
+    <div class="admin-files__table-wrap">
+      <table class="admin-files__table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Имя</th>
+            <th>Тип</th>
+            <th>Заявка</th>
+            <th>Загрузил</th>
+            <th>Дата</th>
+            <th>Статус</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody data-testid="files-body">
+          @for (row of filteredFiles(); track row.id) {
+          <tr>
+            <td>{{ row.id }}</td>
+            <td>{{ row.name }}</td>
+            <td>
+              <span class="admin-files__badge admin-files__badge--type">{{ row.type }}</span>
+            </td>
+            <td>
+              <a [routerLink]="['/admin/orders', row.orderId]">{{ row.orderId }}</a>
+            </td>
+            <td>
+              <a [routerLink]="['/admin/users', row.uploadedById]">{{ row.uploadedByName }}</a>
+            </td>
+            <td>{{ row.uploadedAt }}</td>
+            <td>
+              <span class="admin-files__badge" [attr.data-tone]="statusTone(row.status)">{{ row.status }}</span>
+            </td>
+            <td>
+              @if (row.status === 'На модерации') {
+              <div class="admin-files__actions">
+                <button
+                  type="button"
+                  class="admin-files__action-btn admin-files__action-btn--accept"
+                  (click)="acceptFile(row.id)">
+                  Принять
+                </button>
+                <button
+                  type="button"
+                  class="admin-files__action-btn admin-files__action-btn--reject"
+                  (click)="rejectFile(row.id)">
+                  Отклонить
+                </button>
+              </div>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="admin-files__empty">
+      <strong>Под фильтры ничего не подошло.</strong>
+      <p>Сбросьте фильтры или измените запрос, чтобы увидеть все файлы каталога.</p>
+    </div>
+    } @if (statusMessage()) {
+    <div class="admin-files__message">
+      <small>{{ statusMessage() }}</small>
+    </div>
+    }
+  </article>
+</section>
