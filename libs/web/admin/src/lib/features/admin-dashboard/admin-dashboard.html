@@ -1,0 +1,34 @@
+<section class="admin-dashboard">
+  <header class="admin-dashboard__hero">
+    <div class="admin-dashboard__hero-copy">
+      <p class="admin-dashboard__eyebrow">Администратор</p>
+      <h2 data-testid="dashboard-title">{{ greeting() }}, администратор</h2>
+      <p class="admin-dashboard__lead">
+        Панель управления нотариальным порталом. Следите за заявками, пользователями и системными метриками в одном
+        месте.
+      </p>
+    </div>
+  </header>
+
+  <section class="admin-dashboard__metrics" aria-label="Ключевые метрики">
+    @for (metric of metrics; track metric.label; let i = $index) {
+    <article class="admin-dashboard__metric" [attr.data-tone]="metricTone(i)">
+      <span class="admin-dashboard__metric-label">{{ metric.label }}</span>
+      <strong class="admin-dashboard__metric-value">{{ metric.value }}</strong>
+      <small>{{ metric.description }}</small>
+    </article>
+    }
+  </section>
+
+  <section class="admin-dashboard__quick-links" aria-label="Быстрый доступ">
+    <h3 class="admin-dashboard__section-title">Быстрые ссылки</h3>
+    <div class="admin-dashboard__links-grid">
+      @for (link of quickLinks; track link.href) {
+      <a class="admin-dashboard__link" [routerLink]="link.href">
+        <span class="admin-dashboard__link-icon" aria-hidden="true"></span>
+        <span>{{ link.label }}</span>
+      </a>
+      }
+    </div>
+  </section>
+</section>
