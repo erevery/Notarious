@@ -9,7 +9,8 @@
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-
+import { Router } from '@angular/router';
+import { OrdersApiService } from '../orders_assessment/orders-api.service';
 export type ViewMode = 'list' | 'edit' | 'pdf';
 export type AssessmentStatus = 'New' | 'Verified' | 'InProgress' | 'Completed' | 'Cancelled';
 export type ObjectType =
@@ -274,6 +275,8 @@ function generateId(): string {
 })
 export class RequestPrice implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
+  private readonly ordersApi = inject(OrdersApiService);
 
   readonly view = signal<ViewMode>('list');
   readonly assessments = signal<AssessmentItem[]>([]);
@@ -285,6 +288,7 @@ export class RequestPrice implements OnInit {
   readonly sortDir = signal<SortDir>('desc');
   readonly deleteTarget = signal<AssessmentItem | null>(null);
   readonly isDeleting = signal(false);
+  readonly creatingOrderId = signal<string | null>(null);
 
   readonly filteredAssessments = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
@@ -409,6 +413,15 @@ export class RequestPrice implements OnInit {
       this.assessments.update((l) => l.filter((i) => i.assessment.id !== item.assessment.id));
       this.isDeleting.set(false);
       this.closeDeleteModal();
+    }, 200);
+  }
+
+  createOrder(item: AssessmentItem): void {
+    this.creatingOrderId.set(item.assessment.id);
+    setTimeout(() => {
+      this.ordersApi.createFromAssessment(item);
+      this.creatingOrderId.set(null);
+      void this.router.navigate(['/notary/orders']);
     }, 200);
   }
 

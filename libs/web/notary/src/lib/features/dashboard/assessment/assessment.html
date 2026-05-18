@@ -163,6 +163,17 @@
               </td>
               <td class="td td-act">
                 <div class="row-acts">
+                  <button
+                    class="btn btn-primary btn-xs order-create-btn"
+                    type="button"
+                    [disabled]="
+                      creatingOrderId() === item.assessment.id ||
+                      item.assessment.status === 'Cancelled' ||
+                      item.assessment.status === 'Completed'
+                    "
+                    (click)="createOrder(item)">
+                    @if (creatingOrderId() === item.assessment.id) { Создание… } @else { Создать заказ }
+                  </button>
                   <!-- Редактировать -->
                   <button
                     class="act-btn act-btn--edit"

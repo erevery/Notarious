@@ -1,7 +1,6 @@
 import { Route } from '@angular/router';
 import { Notary } from './notary/notary';
 import { PlaceholderPageRoute } from '@notary-portal/ui';
-import { AssessmentHistoryComponent } from '@notary-portal/ui';
 
 const placeholder = (title: string, features: string[]): Partial<Route> => ({
   component: PlaceholderPageRoute,
@@ -16,13 +15,9 @@ export const notaryRoutes: Route[] = [
       { path: '', ...placeholder('Главная', ['Обзор кабинета нотариуса']) } as Route,
       {
         path: 'orders',
-        ...placeholder('Заказы', [
-          'Просмотр заказов',
-          'Фильтры и поиск',
-          '«Взять в работу»',
-          'Управление статусами',
-        ]),
-      } as Route,
+        loadComponent: () =>
+          import('./features/dashboard/orders_assessment/orders').then((m) => m.NotaryOrders),
+      },
       {
         path: 'subscription',
         ...placeholder('Подписка', ['Оплата подписки', 'Выбор тарифа']),
@@ -58,8 +53,8 @@ export const notaryRoutes: Route[] = [
       },
       {
         path: 'assessment/history',
-        component: AssessmentHistoryComponent,
-        data: { role: 'notary' },
+        redirectTo: '/notary/orders',
+        pathMatch: 'full',
       },
       {
         path: 'copies',

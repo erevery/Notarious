@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { provideRouter, Router } from '@angular/router';
 import { RequestPrice, AssessmentItem } from './assessment';
 
 describe('RequestPrice', () => {
@@ -36,6 +37,7 @@ describe('RequestPrice', () => {
 
     await TestBed.configureTestingModule({
       imports: [RequestPrice, CommonModule, ReactiveFormsModule],
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(RequestPrice);
@@ -142,6 +144,23 @@ describe('RequestPrice', () => {
     jest.advanceTimersByTime(200);
     fixture.detectChanges();
     expect(component.assessments().length).toBe(0);
+  });
+
+  it('should create order from assessment and navigate to orders', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+    localStorage.clear();
+
+    component.createOrder(mockItem);
+    expect(component.creatingOrderId()).toBe(mockItem.assessment.id);
+
+    jest.advanceTimersByTime(200);
+    fixture.detectChanges();
+
+    const orders = JSON.parse(localStorage.getItem('notary-assessment-orders') ?? '[]');
+    expect(orders).toHaveLength(1);
+    expect(orders[0].assessmentId).toBe(mockItem.assessment.id);
+    expect(navigateSpy).toHaveBeenCalledWith(['/notary/orders']);
   });
 
   // для обратной совместимости

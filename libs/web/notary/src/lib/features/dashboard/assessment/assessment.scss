@@ -2,6 +2,11 @@
   display: block;
 }
 
+.rp-page {
+  .container {
+    max-width: 1400px;
+  }
+}
 // ── Тулбар ───────────────────────────────────────────────────────────────────
 
 .toolbar {
@@ -139,7 +144,7 @@
 }
 
 .th-act {
-  width: 110px;
+  width: 230px;
 }
 
 .td-n {
@@ -259,6 +264,14 @@
   display: flex;
   gap: 0.3rem;
   align-items: center;
+}
+
+.order-create-btn {
+  min-width: 112px;
+  height: 30px;
+  padding: 0 0.7rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .act-btn {
